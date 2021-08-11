@@ -23,5 +23,5 @@ fn main() {
     counter.record(&Level::Debug { line: 20 });
     counter.record(&Level::Warn());
     counter.record(&Level::Error(1));
-    println!("{:?}", &counter);
+    println!("{:?}", &counter.to_map());
 }
