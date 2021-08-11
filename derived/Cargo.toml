@@ -2,6 +2,11 @@
 name = "variant_counter_derived"
 version = "0.1.0"
 edition = "2018"
+description = "Rust's Enum variant counter"
+repository = "https://github.com/Folyd/variant-counter"
+documentation = "https://docs.rs/variant_counter"
+readme = "README.md"
+license = "MIT"
 
 [lib]
 proc-macro = true
