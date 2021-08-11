@@ -14,6 +14,7 @@ struct ParsedEnum {
 pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
+    let vis = input.vis;
     let parsed = match input.data {
         Data::Enum(data_enum) => {
             let variant_len = data_enum.variants.len();
@@ -67,16 +68,16 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let expanded = quote! {
         #[derive(Debug)]
         #[must_use]
-        pub struct #counter_struct {
+        #vis struct #counter_struct {
             container: [usize; #variant_count],
         }
 
         impl #counter_struct {
-            pub fn new() -> #counter_struct {
+            #vis fn new() -> #counter_struct {
                 #counter_struct { container: [0; #variant_count]  }
             }
 
-            fn record(&mut self, target: &#name) {
+            #vis fn record(&mut self, target: &#name) {
                 let index = match target {
                     #(#record_quotes,)*
                 };
@@ -85,7 +86,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 self.container[index] += 1;
             }
 
-            fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
+            #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
                 let mut map = std::collections::HashMap::with_capacity(#variant_count);
                 #(#map_quotes)*
                 map
