@@ -62,7 +62,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         _ => panic!("VariantCount only works on Enums"),
     };
 
-    let variant_count = parsed.variant_len;
+    let variant_len = parsed.variant_len;
     let match_arm_quotes = parsed.match_arm_quotes;
     let map_quotes = parsed.map_quotes;
     let counter_struct = format_ident!("{}Counter", name);
@@ -70,12 +70,12 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         #[derive(Debug)]
         #[must_use]
         #vis struct #counter_struct {
-            container: [usize; #variant_count],
+            container: [usize; #variant_len],
         }
 
         impl #counter_struct {
             #vis const fn new() -> #counter_struct {
-                #counter_struct { container: [0; #variant_count]  }
+                #counter_struct { container: [0; #variant_len]  }
             }
 
             #vis const fn check#ty_generics(&self, target: &#name#ty_generics) -> usize {
@@ -91,7 +91,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     #(#match_arm_quotes,)*
                 };
 
-                debug_assert!(index < #variant_count);
+                debug_assert!(index < #variant_len);
                 self.container[index] = self.container[index].saturating_add(1);
             }
 
@@ -100,12 +100,12 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     #(#match_arm_quotes,)*
                 };
 
-                debug_assert!(index < #variant_count);
+                debug_assert!(index < #variant_len);
                 self.container[index] = self.container[index].saturating_sub(1);
             }
 
             #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
-                let mut map = std::collections::HashMap::with_capacity(#variant_count);
+                let mut map = std::collections::HashMap::with_capacity(#variant_len);
                 #(#map_quotes)*
                 map
             }
@@ -113,8 +113,14 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
         impl #impl_generics variant_counter::VariantCount for #name #ty_generics #where_clause {
             type Target = #counter_struct;
+
             fn counter() -> Self::Target {
                 #counter_struct::new()
+            }
+
+            #[inline]
+            fn variant_len() -> usize {
+                #variant_len
             }
         }
 

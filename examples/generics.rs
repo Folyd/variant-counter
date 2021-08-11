@@ -7,6 +7,7 @@ enum Opt<T> {
     None,
 }
 fn main() {
+    assert_eq!(Opt::<usize>::variant_len(), 2);
     let mut counter = Opt::<usize>::counter();
     counter.record(&Opt::Some(1));
     counter.record(&Opt::<usize>::None);
