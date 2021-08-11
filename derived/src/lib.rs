@@ -6,7 +6,7 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
 struct ParsedEnum {
     variant_len: usize,
-    record_quotes: Vec<proc_macro2::TokenStream>,
+    match_arm_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
 }
 
@@ -19,7 +19,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let parsed = match input.data {
         Data::Enum(data_enum) => {
             let variant_len = data_enum.variants.len();
-            let mut record_quotes = Vec::with_capacity(variant_len);
+            let mut match_arm_quotes = Vec::with_capacity(variant_len);
             let mut map_quotes = Vec::with_capacity(variant_len);
             data_enum
                 .variants
@@ -33,29 +33,29 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     });
                     match &variant.fields {
                         Fields::Named(_) => {
-                            record_quotes.push(quote! {
+                            match_arm_quotes.push(quote! {
                                 #name::#variant_name{ .. } => #index
                             });
                         }
                         Fields::Unnamed(f) => {
                             if f.unnamed.is_empty() {
-                                record_quotes.push(quote! {
+                                match_arm_quotes.push(quote! {
                                     #name::#variant_name() => #index
                                 });
                             } else {
-                                record_quotes.push(quote! {
+                                match_arm_quotes.push(quote! {
                                     #name::#variant_name(..) => #index
                                 });
                             }
                         }
-                        Fields::Unit => record_quotes.push(quote! {
+                        Fields::Unit => match_arm_quotes.push(quote! {
                             #name::#variant_name => #index
                         }),
                     }
                 });
             ParsedEnum {
                 variant_len,
-                record_quotes,
+                match_arm_quotes,
                 map_quotes,
             }
         }
@@ -63,7 +63,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     };
 
     let variant_count = parsed.variant_len;
-    let record_quotes = parsed.record_quotes;
+    let match_arm_quotes = parsed.match_arm_quotes;
     let map_quotes = parsed.map_quotes;
     let counter_struct = format_ident!("{}Counter", name);
     let expanded = quote! {
@@ -80,7 +80,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
             #vis fn record #ty_generics (&mut self, target: &#name#ty_generics) {
                 let index = match target {
-                    #(#record_quotes,)*
+                    #(#match_arm_quotes,)*
                 };
 
                 debug_assert!(index < #variant_count);
@@ -89,7 +89,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
             #vis fn erase #ty_generics (&mut self, target: &#name#ty_generics) {
                 let index = match target {
-                    #(#record_quotes,)*
+                    #(#match_arm_quotes,)*
                 };
 
                 debug_assert!(index < #variant_count);
