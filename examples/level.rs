@@ -8,12 +8,13 @@ struct Info {
 }
 
 #[derive(VariantCount)]
-enum Level {
+enum Level<'a> {
     Trace,
     Debug { line: usize },
     Info(Info),
     Warn(),
     Error(usize),
+    Fatal(&'a str),
 }
 
 fn main() {

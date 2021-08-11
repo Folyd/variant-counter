@@ -15,6 +15,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
     let vis = input.vis;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
     let parsed = match input.data {
         Data::Enum(data_enum) => {
             let variant_len = data_enum.variants.len();
@@ -77,7 +78,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 #counter_struct { container: [0; #variant_count]  }
             }
 
-            #vis fn record(&mut self, target: &#name) {
+            #vis fn record #ty_generics (&mut self, target: &#name#ty_generics) {
                 let index = match target {
                     #(#record_quotes,)*
                 };
@@ -93,7 +94,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl variant_counter::VariantCount for #name {
+        impl #impl_generics variant_counter::VariantCount for #name #ty_generics #where_clause {
             type Target = #counter_struct;
             fn counter() -> Self::Target {
                 #counter_struct::new()
