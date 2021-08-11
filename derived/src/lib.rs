@@ -84,7 +84,16 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 };
 
                 debug_assert!(index < #variant_count);
-                self.container[index] += 1;
+                self.container[index] = self.container[index].saturating_add(1);
+            }
+
+            #vis fn erase #ty_generics (&mut self, target: &#name#ty_generics) {
+                let index = match target {
+                    #(#record_quotes,)*
+                };
+
+                debug_assert!(index < #variant_count);
+                self.container[index] = self.container[index].saturating_sub(1);
             }
 
             #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
