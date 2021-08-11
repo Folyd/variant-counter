@@ -12,4 +12,4 @@ license = "MIT"
 members = ["derived"]
 
 [dependencies]
-variant_counter_derived = { path = "./derived" }
+variant_counter_derived = { path = "./derived", version = "0.1.0" }
