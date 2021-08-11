@@ -74,20 +74,19 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         }
 
         impl #counter_struct {
-            #vis fn new() -> #counter_struct {
+            #vis const fn new() -> #counter_struct {
                 #counter_struct { container: [0; #variant_count]  }
             }
 
-            #vis fn check #ty_generics (&self, target: &#name#ty_generics) -> usize {
+            #vis const fn check#ty_generics(&self, target: &#name#ty_generics) -> usize {
                 let index = match target {
                     #(#match_arm_quotes,)*
                 };
 
-                debug_assert!(index < #variant_count);
                 self.container[index]
             }
 
-            #vis fn record #ty_generics (&mut self, target: &#name#ty_generics) {
+            #vis fn record#ty_generics(&mut self, target: &#name#ty_generics) {
                 let index = match target {
                     #(#match_arm_quotes,)*
                 };
@@ -96,7 +95,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 self.container[index] = self.container[index].saturating_add(1);
             }
 
-            #vis fn erase #ty_generics (&mut self, target: &#name#ty_generics) {
+            #vis fn erase#ty_generics(&mut self, target: &#name#ty_generics) {
                 let index = match target {
                     #(#match_arm_quotes,)*
                 };
