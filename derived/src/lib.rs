@@ -32,7 +32,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                                 }
                             } else {
                                 quote! {
-                                    #name::#variant_name(_) => self.increase(#index)
+                                    #name::#variant_name(..) => self.increase(#index)
                                 }
                             }
                         }
@@ -80,7 +80,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
         impl variant_counter::VariantCount for #name {
             type Target = #counter_struct;
-            fn counter(&self) -> Self::Target {
+            fn counter() -> Self::Target {
                 #counter_struct::new()
             }
         }
