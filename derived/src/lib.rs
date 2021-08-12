@@ -33,7 +33,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 .iter()
                 .filter(|variant| !parsed_attr.is_ignored(&variant))
                 .for_each(|variant| {
-                    let (index, group_name) = match parsed_attr.index_group(&variant) {
+                    let (index, group_name) = match parsed_attr.index_group(&variant.ident) {
                         Some(group) => group,
                         None => return,
                     };

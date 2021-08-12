@@ -26,6 +26,7 @@ impl ParsedAttr {
                     parsed.parse_variant_attributes(variant);
                 }
             });
+        parsed.validate_legality();
         parsed
     }
 
@@ -43,13 +44,14 @@ impl ParsedAttr {
                 {
                     meta_list.nested.iter().for_each(|nested| match nested {
                         syn::NestedMeta::Meta(meta) => match meta {
-                            syn::Meta::Path(path)
-                                if path
-                                    .get_ident()
-                                    .filter(|&ident| ident == "ignore")
-                                    .is_some() =>
-                            {
-                                self.ignores.push(variant.ident.clone());
+                            syn::Meta::Path(path) => {
+                                match path.get_ident() {
+                                    Some(ident) if ident == "ignore" => {
+                                        self.ignores.push(variant.ident.clone());
+                                    },
+                                    Some(ident) => panic!("Invalid attribute: {}", ident.to_string()),
+                                    _ => {},
+                                }
                             }
                             syn::Meta::NameValue(name_value) => {
                                 match name_value.path.get_ident().map(|ident| ident.to_string()) {
@@ -61,6 +63,9 @@ impl ParsedAttr {
                                                 "Invalid group value type: #[counter(group = `string type` )]",
                                             ),
                                         }
+                                    }
+                                    Some(invalid_name) => {
+                                        panic!("Invalid attribute: {}", invalid_name);
                                     }
                                     _ => {}
                                 }
@@ -78,12 +83,12 @@ impl ParsedAttr {
         self.groups.entry(name).or_insert_with(Vec::new).push(ident);
     }
 
-    pub(crate) fn index_group(&self, variant: &Variant) -> Option<(usize, &String)> {
+    pub(crate) fn index_group(&self, variant: &Ident) -> Option<(usize, &String)> {
         self.groups
             .iter()
             .enumerate()
             .find_map(|(index, (name, ident))| {
-                if ident.contains(&variant.ident) {
+                if ident.contains(&variant) {
                     Some((index, name))
                 } else {
                     None
@@ -93,5 +98,20 @@ impl ParsedAttr {
 
     pub(crate) fn is_ignored(&self, variant: &Variant) -> bool {
         self.ignores.contains(&variant.ident)
+    }
+
+    fn validate_legality(&self) {
+        let conflict_names: Vec<_> = self
+            .ignores
+            .iter()
+            .filter(|ident| self.index_group(ident).is_some())
+            .map(|ident| ident.to_string())
+            .collect();
+        if !conflict_names.is_empty() {
+            panic!(
+                "#[counter(ignore)] is exclusive to other attributes: error variant: {:?}",
+                conflict_names
+            );
+        }
     }
 }
