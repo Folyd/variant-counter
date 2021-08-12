@@ -26,6 +26,11 @@ impl ParsedAttr {
                     parsed.record_group(variant.ident.to_string(), variant.ident.clone());
                 }
             });
+
+        if parsed.ignores.len() == data_enum.variants.len() {
+            panic!("All variants were ignored, please check again.");
+        }
+
         parsed.validate_legality();
         parsed
     }
