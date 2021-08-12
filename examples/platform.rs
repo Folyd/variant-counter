@@ -6,6 +6,7 @@ enum Platform {
     #[counter(group = "mobile")]
     Android,
     #[counter(group = "mobile")]
+    #[allow(clippy::upper_case_acronyms)]
     IOS,
     #[counter(group = "desktop")]
     Windows,

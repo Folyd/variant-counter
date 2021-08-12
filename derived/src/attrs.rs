@@ -20,63 +20,57 @@ impl ParsedAttr {
             .iter()
             .enumerate()
             .for_each(|(_index, variant)| {
-                if variant.attrs.is_empty() {
+                if !parsed.parse_variant_attributes(variant) {
+                    // If not desired attributes has been parsed,
+                    // record the variant as the group as normal.
                     parsed.record_group(variant.ident.to_string(), variant.ident.clone());
-                } else {
-                    parsed.parse_variant_attributes(variant);
                 }
             });
         parsed.validate_legality();
         parsed
     }
 
-    fn parse_variant_attributes(&mut self, variant: &Variant) {
-        variant
-            .attrs
-            .iter()
-            .for_each(|attr| match attr.parse_meta() {
-                Ok(syn::Meta::List(meta_list))
-                    if meta_list
-                        .path
-                        .get_ident()
-                        .filter(|&ident| ident == "counter")
-                        .is_some() =>
-                {
-                    meta_list.nested.iter().for_each(|nested| match nested {
-                        syn::NestedMeta::Meta(meta) => match meta {
-                            syn::Meta::Path(path) => {
-                                match path.get_ident() {
-                                    Some(ident) if ident == "ignore" => {
-                                        self.ignores.push(variant.ident.clone());
-                                    },
-                                    Some(ident) => panic!("Invalid attribute: {}", ident.to_string()),
-                                    _ => {},
+    // Reture true if desired attributes has been parsed, false otherwise.
+    fn parse_variant_attributes(&mut self, variant: &Variant) -> bool {
+        variant.attrs.iter().any(|attr| match attr.parse_meta() {
+            Ok(syn::Meta::List(meta_list))
+                if meta_list
+                    .path
+                    .get_ident()
+                    .filter(|&ident| ident == "counter")
+                    .is_some() =>
+            {
+                meta_list.nested.iter().any(|nested| match nested {
+                    syn::NestedMeta::Meta(syn::Meta::Path(path)) => match path.get_ident() {
+                        Some(ident) if ident == "ignore" => {
+                            self.ignores.push(variant.ident.clone());
+                            true
+                        }
+                        Some(ident) => panic!("Invalid attribute: {}", ident.to_string()),
+                        _ => false,
+                    },
+                    syn::NestedMeta::Meta(syn::Meta::NameValue(name_value)) => {
+                        match name_value.path.get_ident().map(|ident| ident.to_string()) {
+                            Some(name) if name == "group" => match &name_value.lit {
+                                syn::Lit::Str(str) => {
+                                    self.record_group(str.value(), variant.ident.clone());
+                                    true
                                 }
+                                _ => panic!(
+                                    "Invalid group value type: #[counter(group = `string type` )]",
+                                ),
+                            },
+                            Some(invalid_name) => {
+                                panic!("Invalid attribute: {}", invalid_name);
                             }
-                            syn::Meta::NameValue(name_value) => {
-                                match name_value.path.get_ident().map(|ident| ident.to_string()) {
-                                    Some(name) if name == "group" => {
-                                        match &name_value.lit {
-                                            syn::Lit::Str(str) => self
-                                                .record_group(str.value(), variant.ident.clone()),
-                                            _ => panic!(
-                                                "Invalid group value type: #[counter(group = `string type` )]",
-                                            ),
-                                        }
-                                    }
-                                    Some(invalid_name) => {
-                                        panic!("Invalid attribute: {}", invalid_name);
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            _ => {}
-                        },
-                        _ => {}
-                    });
-                }
-                _ => {}
-            });
+                            _ => false,
+                        }
+                    }
+                    _ => false,
+                })
+            }
+            _ => false,
+        })
     }
 
     fn record_group(&mut self, name: String, ident: Ident) {
