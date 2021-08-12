@@ -11,5 +11,15 @@ license = "MIT"
 [workspace]
 members = ["derived"]
 
+[features]
+check = ["variant_counter_derived/check"]
+erase = ["variant_counter_derived/erase"]
+
 [dependencies]
 variant_counter_derived = { path = "./derived", version = "0.2.0" }
+
+[dev-dependencies]
+variant_counter_derived = { path = "./derived", version = "0.2.0", features = [
+    "check",
+    "erase",
+] }
