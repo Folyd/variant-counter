@@ -25,19 +25,22 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         Data::Enum(data_enum) => {
             let parsed_attr = ParsedAttr::parse(&data_enum);
 
-            let variant_len = data_enum.variants.len() - parsed_attr.ignored_count();
+            let variant_len = parsed_attr.groups.len();
             let mut match_arm_quotes = Vec::with_capacity(variant_len);
             let mut map_quotes = Vec::with_capacity(variant_len);
             data_enum
                 .variants
                 .iter()
                 .filter(|variant| !parsed_attr.is_ignored(&variant))
-                .enumerate()
-                .for_each(|(index, variant)| {
+                .for_each(|variant| {
+                    let (index, group_name) = match parsed_attr.index_group(&variant) {
+                        Some(group) => group,
+                        None => return,
+                    };
+
                     let variant_name = &variant.ident;
-                    let display_variant_name = variant_name.to_string();
                     map_quotes.push(quote! {
-                        map.insert(#display_variant_name, self.container[#index]);
+                        map.insert(#group_name, self.container[#index]);
                     });
 
                     match &variant.fields {
@@ -65,7 +68,16 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             ParsedEnum {
                 variant_len,
                 match_arm_quotes,
-                map_quotes,
+                map_quotes: parsed_attr
+                    .groups
+                    .iter()
+                    .enumerate()
+                    .map(|(index, (group_name, _))| {
+                        quote! {
+                            map.insert(#group_name, self.container[#index]);
+                        }
+                    })
+                    .collect(),
             }
         }
         _ => panic!("VariantCount only works on Enums"),

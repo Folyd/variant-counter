@@ -1,21 +1,35 @@
+use std::collections::BTreeMap;
+
 use proc_macro2::Ident;
 use syn::{DataEnum, Variant};
 
 #[derive(Debug)]
-pub struct ParsedAttr {
-    ignored: Vec<Ident>,
+pub(crate) struct ParsedAttr {
+    pub(crate) ignores: Vec<Ident>,
+    pub(crate) groups: BTreeMap<String, Vec<Ident>>,
 }
 
 impl ParsedAttr {
     pub fn parse(data_enum: &DataEnum) -> ParsedAttr {
-        let mut parsed = ParsedAttr { ignored: vec![] };
-        data_enum.variants.iter().enumerate().for_each(|item| {
-            parsed.parse_variant_attributes(item);
-        });
+        let mut parsed = ParsedAttr {
+            ignores: vec![],
+            groups: BTreeMap::default(),
+        };
+        data_enum
+            .variants
+            .iter()
+            .enumerate()
+            .for_each(|(_index, variant)| {
+                if variant.attrs.is_empty() {
+                    parsed.record_group(variant.ident.to_string(), variant.ident.clone());
+                } else {
+                    parsed.parse_variant_attributes(variant);
+                }
+            });
         parsed
     }
 
-    fn parse_variant_attributes(&mut self, (_index, variant): (usize, &Variant)) {
+    fn parse_variant_attributes(&mut self, variant: &Variant) {
         variant
             .attrs
             .iter()
@@ -35,9 +49,22 @@ impl ParsedAttr {
                                     .filter(|&ident| ident == "ignore")
                                     .is_some() =>
                             {
-                                self.ignored.push(variant.ident.clone());
+                                self.ignores.push(variant.ident.clone());
                             }
-                            syn::Meta::List(_) => {}
+                            syn::Meta::NameValue(name_value) => {
+                                match name_value.path.get_ident().map(|ident| ident.to_string()) {
+                                    Some(name) if name == "group" => {
+                                        match &name_value.lit {
+                                            syn::Lit::Str(str) => self
+                                                .record_group(str.value(), variant.ident.clone()),
+                                            _ => panic!(
+                                                "Invalid group value type: #[counter(group = `string type` )]",
+                                            ),
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
                             _ => {}
                         },
                         _ => {}
@@ -47,11 +74,24 @@ impl ParsedAttr {
             });
     }
 
-    pub fn is_ignored(&self, variant: &Variant) -> bool {
-        self.ignored.contains(&variant.ident)
+    fn record_group(&mut self, name: String, ident: Ident) {
+        self.groups.entry(name).or_insert_with(Vec::new).push(ident);
     }
 
-    pub fn ignored_count(&self) -> usize {
-        self.ignored.len()
+    pub(crate) fn index_group(&self, variant: &Variant) -> Option<(usize, &String)> {
+        self.groups
+            .iter()
+            .enumerate()
+            .find_map(|(index, (name, ident))| {
+                if ident.contains(&variant.ident) {
+                    Some((index, name))
+                } else {
+                    None
+                }
+            })
+    }
+
+    pub(crate) fn is_ignored(&self, variant: &Variant) -> bool {
+        self.ignores.contains(&variant.ident)
     }
 }
