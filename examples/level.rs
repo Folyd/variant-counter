@@ -9,8 +9,11 @@ struct Info {
 
 #[derive(VariantCount)]
 enum Level<'a> {
+    #[counter(ignore)]
     Trace,
-    Debug { line: usize },
+    Debug {
+        line: usize,
+    },
     Info(Info),
     Warn(),
     Error(usize),
@@ -19,10 +22,13 @@ enum Level<'a> {
 
 fn main() {
     let mut counter = Level::counter();
+    counter.record(&Level::Trace);
     counter.record(&Level::Debug { line: 10 });
     counter.record(&Level::Trace);
     counter.record(&Level::Debug { line: 20 });
     counter.record(&Level::Warn());
     counter.record(&Level::Error(1));
+
+    assert_eq!(counter.check(&Level::Trace), None);
     println!("{:?}", &counter.to_map());
 }

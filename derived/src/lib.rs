@@ -4,26 +4,34 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
+use crate::attrs::ParsedAttr;
+
+mod attrs;
+
 struct ParsedEnum {
     variant_len: usize,
     match_arm_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
 }
 
-#[proc_macro_derive(VariantCount)]
+#[proc_macro_derive(VariantCount, attributes(counter))]
 pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
     let vis = input.vis;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
     let parsed = match input.data {
         Data::Enum(data_enum) => {
-            let variant_len = data_enum.variants.len();
+            let parsed_attr = ParsedAttr::parse(&data_enum);
+
+            let variant_len = data_enum.variants.len() - parsed_attr.ignored_count();
             let mut match_arm_quotes = Vec::with_capacity(variant_len);
             let mut map_quotes = Vec::with_capacity(variant_len);
             data_enum
                 .variants
                 .iter()
+                .filter(|variant| !parsed_attr.is_ignored(&variant))
                 .enumerate()
                 .for_each(|(index, variant)| {
                     let variant_name = &variant.ident;
@@ -31,25 +39,26 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     map_quotes.push(quote! {
                         map.insert(#display_variant_name, self.container[#index]);
                     });
+
                     match &variant.fields {
                         Fields::Named(_) => {
                             match_arm_quotes.push(quote! {
-                                #name::#variant_name{ .. } => #index
+                                #name::#variant_name{ .. } => Some(#index)
                             });
                         }
                         Fields::Unnamed(f) => {
                             if f.unnamed.is_empty() {
                                 match_arm_quotes.push(quote! {
-                                    #name::#variant_name() => #index
+                                    #name::#variant_name() => Some(#index)
                                 });
                             } else {
                                 match_arm_quotes.push(quote! {
-                                    #name::#variant_name(..) => #index
+                                    #name::#variant_name(..) => Some(#index)
                                 });
                             }
                         }
                         Fields::Unit => match_arm_quotes.push(quote! {
-                            #name::#variant_name => #index
+                            #name::#variant_name => Some(#index)
                         }),
                     }
                 });
@@ -78,30 +87,41 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 #counter_struct { container: [0; #variant_len]  }
             }
 
-            #vis const fn check#ty_generics(&self, target: &#name#ty_generics) -> usize {
+            #vis const fn check#ty_generics(&self, target: &#name#ty_generics) -> Option<usize> {
                 let index = match target {
                     #(#match_arm_quotes,)*
+                    _ => None,
                 };
 
-                self.container[index]
+                if let Some(index) = index {
+                    Some(self.container[index])
+                } else {
+                    None
+                }
             }
 
             #vis fn record#ty_generics(&mut self, target: &#name#ty_generics) {
                 let index = match target {
                     #(#match_arm_quotes,)*
+                    _ => None,
                 };
 
-                debug_assert!(index < #variant_len);
-                self.container[index] = self.container[index].saturating_add(1);
+                if let Some(index) = index {
+                    debug_assert!(index < #variant_len);
+                    self.container[index] = self.container[index].saturating_add(1);
+                }
             }
 
             #vis fn erase#ty_generics(&mut self, target: &#name#ty_generics) {
                 let index = match target {
                     #(#match_arm_quotes,)*
+                    _ => None,
                 };
 
-                debug_assert!(index < #variant_len);
-                self.container[index] = self.container[index].saturating_sub(1);
+                if let Some(index) = index {
+                    debug_assert!(index < #variant_len);
+                    self.container[index] = self.container[index].saturating_sub(1);
+                }
             }
 
             #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
