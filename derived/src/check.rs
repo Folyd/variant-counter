@@ -4,7 +4,7 @@ use syn::DeriveInput;
 #[cfg(feature = "check")]
 pub(crate) fn generate_check_fn(
     input: &DeriveInput,
-    match_arm_quotes: &Vec<proc_macro2::TokenStream>,
+    match_arm_quotes: &[proc_macro2::TokenStream],
 ) -> proc_macro2::TokenStream {
     let name = &input.ident;
     let vis = &input.vis;
@@ -29,7 +29,7 @@ pub(crate) fn generate_check_fn(
 #[cfg(not(feature = "check"))]
 pub(crate) fn generate_check_fn(
     _input: &DeriveInput,
-    _match_arm_quotes: &Vec<proc_macro2::TokenStream>,
+    _match_arm_quotes: &[proc_macro2::TokenStream],
 ) -> proc_macro2::TokenStream {
     quote! {}
 }

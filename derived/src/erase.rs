@@ -4,7 +4,7 @@ use syn::DeriveInput;
 #[cfg(feature = "erase")]
 pub(crate) fn generate_erase_fn(
     input: &DeriveInput,
-    match_arm_quotes: &Vec<proc_macro2::TokenStream>,
+    match_arm_quotes: &[proc_macro2::TokenStream],
 ) -> proc_macro2::TokenStream {
     let name = &input.ident;
     let vis = &input.vis;
@@ -27,7 +27,7 @@ pub(crate) fn generate_erase_fn(
 #[cfg(not(feature = "erase"))]
 pub(crate) fn generate_erase_fn(
     _input: &DeriveInput,
-    _match_arm_quotes: &Vec<proc_macro2::TokenStream>,
+    _match_arm_quotes: &[proc_macro2::TokenStream],
 ) -> proc_macro2::TokenStream {
     quote! {}
 }
