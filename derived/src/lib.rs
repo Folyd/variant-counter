@@ -13,6 +13,9 @@ mod check;
 mod erase;
 
 struct ParsedEnum {
+    // The number of variants in the enum type.
+    variant_count: usize,
+    // The number of variants excluding ignored in the enum type.
     variant_len: usize,
     match_arm_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
@@ -30,7 +33,8 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         Data::Enum(data_enum) => {
             let parsed_attr = ParsedAttr::parse(&data_enum);
 
-            let variant_len = data_enum.variants.len();
+            let variant_count = data_enum.variants.len();
+            let variant_len = variant_count - parsed_attr.ignores.len();
             let mut match_arm_quotes = Vec::with_capacity(variant_len);
             let mut map_quotes = Vec::with_capacity(variant_len);
             let variant_index_map = data_enum
@@ -76,6 +80,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     }
                 });
             ParsedEnum {
+                variant_count,
                 variant_len,
                 match_arm_quotes,
                 map_quotes,
@@ -98,6 +103,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         _ => panic!("VariantCount only works on Enums"),
     };
 
+    let variant_count = parsed.variant_count;
     let variant_len = parsed.variant_len;
     let match_arm_quotes = parsed.match_arm_quotes;
     let map_quotes = parsed.map_quotes;
@@ -108,6 +114,13 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let check_fn = check::generate_check_fn(&input, &match_arm_quotes);
 
     let expanded = quote! {
+        impl #impl_generics #name #ty_generics #where_clause {
+            #[inline]
+            fn variant_count() -> usize {
+                #variant_count
+            }
+        }
+        
         #[derive(Debug)]
         #[must_use]
         #vis struct #counter_struct {
@@ -152,11 +165,6 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
             fn counter() -> Self::Target {
                 #counter_struct::new()
-            }
-
-            #[inline]
-            fn variant_len() -> usize {
-                #variant_len
             }
         }
     };
