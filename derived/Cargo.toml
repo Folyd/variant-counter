@@ -1,6 +1,6 @@
 [package]
 name = "variant_counter_derived"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2018"
 description = "Rust's Enum variant counter"
 repository = "https://github.com/Folyd/variant-counter"
