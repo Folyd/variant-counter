@@ -31,4 +31,5 @@ fn main() {
 
     assert_eq!(counter.check(&Level::Trace), None);
     println!("{:?}", &counter.to_map());
+    println!("{:?}", &counter.to_group_map());
 }

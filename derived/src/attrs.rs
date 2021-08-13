@@ -1,12 +1,11 @@
 use std::collections::BTreeMap;
 
-use proc_macro2::Ident;
 use syn::{DataEnum, Variant};
 
 #[derive(Debug)]
 pub(crate) struct ParsedAttr {
-    pub(crate) ignores: Vec<Ident>,
-    pub(crate) groups: BTreeMap<String, Vec<Ident>>,
+    pub(crate) ignores: Vec<proc_macro2::Ident>,
+    pub(crate) groups: BTreeMap<String, Vec<proc_macro2::Ident>>,
 }
 
 impl ParsedAttr {
@@ -78,11 +77,11 @@ impl ParsedAttr {
         })
     }
 
-    fn record_group(&mut self, name: String, ident: Ident) {
+    fn record_group(&mut self, name: String, ident: proc_macro2::Ident) {
         self.groups.entry(name).or_insert_with(Vec::new).push(ident);
     }
 
-    pub(crate) fn index_group(&self, variant: &Ident) -> Option<(usize, &String)> {
+    pub(crate) fn index_group(&self, variant: &proc_macro2::Ident) -> Option<(usize, &String)> {
         self.groups
             .iter()
             .enumerate()

@@ -1,5 +1,7 @@
 extern crate proc_macro;
 
+use std::collections::HashMap;
+
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
@@ -14,6 +16,7 @@ struct ParsedEnum {
     variant_len: usize,
     match_arm_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
+    group_map_quotes: Vec<proc_macro2::TokenStream>,
 }
 
 #[proc_macro_derive(VariantCount, attributes(counter))]
@@ -27,16 +30,24 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         Data::Enum(data_enum) => {
             let parsed_attr = ParsedAttr::parse(&data_enum);
 
-            let variant_len = parsed_attr.groups.len();
+            let variant_len = data_enum.variants.len();
             let mut match_arm_quotes = Vec::with_capacity(variant_len);
             let mut map_quotes = Vec::with_capacity(variant_len);
-            data_enum
+            let variant_index_map = data_enum
                 .variants
                 .iter()
                 .filter(|variant| !parsed_attr.is_ignored(&variant))
                 .enumerate()
-                .for_each(|(index, variant)| {
+                .map(|(index, variant)| (&variant.ident, index))
+                .collect::<HashMap<&proc_macro2::Ident, usize>>();
+
+            data_enum
+                .variants
+                .iter()
+                .filter(|variant| !parsed_attr.is_ignored(&variant))
+                .for_each(|variant| {
                     let variant_name = &variant.ident;
+                    let index = variant_index_map[variant_name];
                     let display_variant_name = variant_name.to_string();
                     map_quotes.push(quote! {
                         map.insert(#display_variant_name, self.container[#index]);
@@ -68,6 +79,20 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 variant_len,
                 match_arm_quotes,
                 map_quotes,
+                group_map_quotes: parsed_attr
+                    .groups
+                    .iter()
+                    .map(|(group_name, idents)| {
+                        let variant_quotes = idents
+                            .iter()
+                            .filter_map(|ident| variant_index_map.get(ident))
+                            .map(|index| quote! { self.container[#index] })
+                            .collect::<Vec<proc_macro2::TokenStream>>();
+                        quote! {
+                            map.insert(#group_name, #(#variant_quotes)+*);
+                        }
+                    })
+                    .collect(),
             }
         }
         _ => panic!("VariantCount only works on Enums"),
@@ -76,6 +101,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let variant_len = parsed.variant_len;
     let match_arm_quotes = parsed.match_arm_quotes;
     let map_quotes = parsed.map_quotes;
+    let group_map_quotes = parsed.group_map_quotes;
     let counter_struct = format_ident!("{}Counter", name);
 
     let erase_fn = erase::generate_erase_fn(&input, &match_arm_quotes);
@@ -111,6 +137,12 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
                 let mut map = std::collections::HashMap::with_capacity(#variant_len);
                 #(#map_quotes)*
+                map
+            }
+
+            #vis fn to_group_map(&self) -> std::collections::HashMap<&'static str, usize> {
+                let mut map = std::collections::HashMap::with_capacity(#variant_len);
+                #(#group_map_quotes)*
                 map
             }
         }
