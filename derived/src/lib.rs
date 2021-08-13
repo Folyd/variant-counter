@@ -34,15 +34,12 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 .variants
                 .iter()
                 .filter(|variant| !parsed_attr.is_ignored(&variant))
-                .for_each(|variant| {
-                    let (index, group_name) = match parsed_attr.index_group(&variant.ident) {
-                        Some(group) => group,
-                        None => return,
-                    };
-
+                .enumerate()
+                .for_each(|(index, variant)| {
                     let variant_name = &variant.ident;
+                    let display_variant_name = variant_name.to_string();
                     map_quotes.push(quote! {
-                        map.insert(#group_name, self.container[#index]);
+                        map.insert(#display_variant_name, self.container[#index]);
                     });
 
                     match &variant.fields {
@@ -70,16 +67,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             ParsedEnum {
                 variant_len,
                 match_arm_quotes,
-                map_quotes: parsed_attr
-                    .groups
-                    .iter()
-                    .enumerate()
-                    .map(|(index, (group_name, _))| {
-                        quote! {
-                            map.insert(#group_name, self.container[#index]);
-                        }
-                    })
-                    .collect(),
+                map_quotes,
             }
         }
         _ => panic!("VariantCount only works on Enums"),
