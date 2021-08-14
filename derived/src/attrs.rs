@@ -16,6 +16,11 @@ impl ParsedAttr {
             groups: BTreeMap::default(),
             weight: HashMap::default(),
         };
+
+        if data_enum.variants.is_empty() {
+            panic!("Empty enum is not supported.");
+        }
+
         data_enum.variants.iter().for_each(|variant| {
             parsed.parse_variant_attributes(variant);
         });
