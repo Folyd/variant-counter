@@ -134,20 +134,21 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
     let variant_count = parsed.variant_count;
     let variant_len = parsed.variant_len;
+    let match_arm_quotes = &parsed.match_arm_quotes;
     let map_quotes = parsed.map_quotes;
     let group_map_quotes = parsed.group_map_quotes;
     let counter_struct = format_ident!("{}Counter", name);
 
-    let check_fn = check::generate_check_fn(&input, &parsed.match_arm_quotes);
+    let check_fn = check::generate_check_fn(&input, match_arm_quotes);
 
     let record_fn = if parsed.weight_match_arm_quotes.is_empty() {
-        record::generate_record_fn(&input, &parsed.match_arm_quotes)
+        record::generate_record_fn(&input, match_arm_quotes)
     } else {
         record::generate_weight_record_fn(&input, &parsed.weight_match_arm_quotes)
     };
 
     let erase_fn = if parsed.weight_match_arm_quotes.is_empty() {
-        erase::generate_erase_fn(&input, &parsed.match_arm_quotes)
+        erase::generate_erase_fn(&input, match_arm_quotes)
     } else {
         erase::generate_weight_erase_fn(&input, &parsed.weight_match_arm_quotes)
     };
@@ -175,6 +176,21 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             #erase_fn
 
             #check_fn
+
+            #vis fn discard#ty_generics(&mut self, target: &#name#ty_generics) {
+                let index = match target {
+                    #(#match_arm_quotes,)*
+                    _ => None,
+                };
+
+                if let Some(index) = index {
+                    self.container[index] = 0;
+                }
+            }
+
+            #vis fn reset#ty_generics(&mut self) {
+                self.container = [0; #variant_len];
+            }
 
             #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
                 let mut map = std::collections::HashMap::with_capacity(#variant_len);
