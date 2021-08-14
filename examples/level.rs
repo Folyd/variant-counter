@@ -15,9 +15,10 @@ enum Level<'a> {
         line: usize,
     },
     Info(Info),
+    #[counter(weight = 5)]
     Warn(),
+    #[counter(group = "Fatal", weight = 10)]
     Error(usize),
-    #[counter(weight = 10)]
     Fatal(&'a str),
 }
 
@@ -31,7 +32,7 @@ fn main() {
     counter.record(&Level::Error(1));
     counter.record(&Level::Fatal("fatal error"));
 
-    assert_eq!(counter.check(&Level::Error(1)), Some(1));
+    assert_eq!(counter.check(&Level::Error(1)), Some(10));
     counter.discard(&Level::Error(1));
 
     assert_eq!(counter.check(&Level::Trace), None);
