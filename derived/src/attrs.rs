@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use syn::{DataEnum, Variant};
 
@@ -6,6 +6,7 @@ use syn::{DataEnum, Variant};
 pub(crate) struct ParsedAttr {
     pub(crate) ignores: Vec<proc_macro2::Ident>,
     pub(crate) groups: BTreeMap<String, Vec<proc_macro2::Ident>>,
+    pub(crate) weight: HashMap<proc_macro2::Ident, usize>,
 }
 
 impl ParsedAttr {
@@ -13,6 +14,7 @@ impl ParsedAttr {
         let mut parsed = ParsedAttr {
             ignores: vec![],
             groups: BTreeMap::default(),
+            weight: HashMap::default(),
         };
         data_enum
             .variants
@@ -20,8 +22,8 @@ impl ParsedAttr {
             .enumerate()
             .for_each(|(_index, variant)| {
                 if !parsed.parse_variant_attributes(variant) {
-                    // If not desired attributes has been parsed,
-                    // record the variant as the group as normal.
+                    // If the variant not be ignored, then
+                    // record the variant as the group.
                     parsed.record_group(variant.ident.to_string(), variant.ident.clone());
                 }
             });
@@ -34,7 +36,7 @@ impl ParsedAttr {
         parsed
     }
 
-    // Reture true if desired attributes has been parsed, false otherwise.
+    // Reture true if the `ignore` attribute has been detected, false otherwise.
     fn parse_variant_attributes(&mut self, variant: &Variant) -> bool {
         variant.attrs.iter().any(|attr| match attr.parse_meta() {
             Ok(syn::Meta::List(meta_list))
@@ -50,20 +52,25 @@ impl ParsedAttr {
                             self.ignores.push(variant.ident.clone());
                             true
                         }
-                        Some(ident) => panic!("Invalid attribute: {}", ident.to_string()),
+                        Some(ident) => panic!("Unknown attribute: {}", ident.to_string()),
                         _ => false,
                     },
                     syn::NestedMeta::Meta(syn::Meta::NameValue(name_value)) => {
                         match name_value.path.get_ident().map(|ident| ident.to_string()) {
-                            Some(name) if name == "group" => match &name_value.lit {
-                                syn::Lit::Str(str) => {
-                                    self.record_group(str.value(), variant.ident.clone());
-                                    true
-                                }
-                                _ => panic!(
-                                    "Invalid group value type: #[counter(group = `string type` )]",
-                                ),
+                            Some(name) if name == "group" => if let syn::Lit::Str(str) = &name_value.lit {
+                                self.record_group(str.value(), variant.ident.clone());
+                                false
+                            } else {
+                                panic!("Invalid `group` value type: #[counter(group = `string type` )]")
                             },
+                            Some(name) if name == "weight" =>  {
+                                if let syn::Lit::Int(value) = &name_value.lit {
+                                    self.record_weight(value.base10_parse().expect("`weight` value parse failed"), variant.ident.clone());
+                                } else {
+                                    panic!("Invalid `weight` value type, expected int type: #[counter(weight = `int type`)]");
+                                }
+                                false
+                            }
                             Some(invalid_name) => {
                                 panic!("Invalid attribute: {}", invalid_name);
                             }
@@ -81,6 +88,10 @@ impl ParsedAttr {
         self.groups.entry(name).or_insert_with(Vec::new).push(ident);
     }
 
+    fn record_weight(&mut self, value: usize, ident: proc_macro2::Ident) {
+        self.weight.insert(ident, value);
+    }
+
     pub(crate) fn index_group(&self, variant: &proc_macro2::Ident) -> Option<(usize, &String)> {
         self.groups
             .iter()
@@ -96,6 +107,10 @@ impl ParsedAttr {
 
     pub(crate) fn is_ignored(&self, variant: &Variant) -> bool {
         self.ignores.contains(&variant.ident)
+    }
+
+    pub(crate) fn has_weight(&self) -> bool {
+        !self.weight.is_empty()
     }
 
     fn validate_legality(&self) {
