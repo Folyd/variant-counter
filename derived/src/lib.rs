@@ -9,7 +9,6 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 use crate::attrs::ParsedAttr;
 
 mod attrs;
-mod erase;
 mod record;
 
 struct ParsedEnum {
@@ -19,6 +18,7 @@ struct ParsedEnum {
     variant_len: usize,
     match_arm_quotes: Vec<proc_macro2::TokenStream>,
     check_quotes: Vec<proc_macro2::TokenStream>,
+    erase_quotes: Vec<proc_macro2::TokenStream>,
     weight_match_arm_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
     group_map_quotes: Vec<proc_macro2::TokenStream>,
@@ -41,6 +41,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             let variant_count = data_enum.variants.len();
             let variant_len = variant_count - parsed_attr.ignores.len();
             let mut check_quotes = Vec::with_capacity(variant_len);
+            let mut erase_quotes = Vec::with_capacity(variant_len);
             let mut weight_match_arm_quotes = Vec::with_capacity(variant_len);
             let mut match_arm_quotes = Vec::with_capacity(variant_len);
             let mut map_quotes = Vec::with_capacity(variant_len);
@@ -95,8 +96,18 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                         }),
                     }
 
+                    let weight = parsed_attr.weight.get(&variant_name).copied().unwrap_or(1);
+
+                    let erase_fn_name =
+                        format_ident!("erase_{}", display_variant_name.to_lowercase());
+                    erase_quotes.push(quote! {
+                        #[inline]
+                        #vis fn #erase_fn_name(&mut self) {
+                            self.container[#index] = self.container[#index].saturating_sub(#weight);
+                        }
+                    });
+
                     if parsed_attr.has_weight() {
-                        let weight = parsed_attr.weight.get(&variant_name).copied().unwrap_or(1);
                         match &variant.fields {
                             Fields::Named(_) => {
                                 weight_match_arm_quotes.push(quote! {
@@ -125,6 +136,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 variant_len,
                 match_arm_quotes,
                 check_quotes,
+                erase_quotes,
                 weight_match_arm_quotes,
                 map_quotes,
                 group_map_quotes: parsed_attr
@@ -164,11 +176,11 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         record::generate_weight_record_fn(&input, &parsed.weight_match_arm_quotes)
     };
 
-    let erase_fn = if parsed.weight_match_arm_quotes.is_empty() {
-        erase::generate_erase_fn(&input, match_arm_quotes)
-    } else {
-        erase::generate_weight_erase_fn(&input, &parsed.weight_match_arm_quotes)
-    };
+    #[cfg(feature = "check")]
+    let erase_fns = parsed.erase_quotes;
+    #[cfg(not(feature = "check"))]
+    let erase_fns = quote! {};
+
     let expanded = quote! {
         impl #impl_generics #name #ty_generics #where_clause {
             #[inline]
@@ -190,7 +202,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
             #record_fn
 
-            #erase_fn
+            #(#erase_fns)*
 
             #(#check_fns)*
 
