@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use quote::quote_spanned;
 use syn::{DataEnum, Variant};
 
 #[derive(Debug)]
@@ -10,7 +11,7 @@ pub(crate) struct ParsedAttr {
 }
 
 impl ParsedAttr {
-    pub fn parse(data_enum: &DataEnum) -> ParsedAttr {
+    pub fn parse(data_enum: &DataEnum) -> Result<ParsedAttr, proc_macro2::TokenStream> {
         let mut parsed = ParsedAttr {
             ignores: vec![],
             groups: BTreeMap::default(),
@@ -21,68 +22,97 @@ impl ParsedAttr {
             panic!("Empty enum is not supported.");
         }
 
-        data_enum.variants.iter().for_each(|variant| {
-            parsed.parse_variant_attributes(variant);
-        });
+        for variant in data_enum.variants.iter() {
+            parsed.parse_variant_attributes(variant)?;
+        }
 
         if parsed.ignores.len() == data_enum.variants.len() {
             panic!("All variants were ignored, please check again.");
         }
 
         parsed.validate_legality();
-        parsed
+        Ok(parsed)
     }
 
-    fn parse_variant_attributes(&mut self, variant: &Variant) {
-        variant.attrs.iter().for_each(|attr| match attr.parse_meta() {
-            Ok(syn::Meta::List(meta_list))
-                if meta_list
-                    .path
-                    .get_ident()
-                    .filter(|&ident| ident == "counter")
-                    .is_some() =>
-            {
-                meta_list.nested.iter().for_each(|nested| match nested {
-                    syn::NestedMeta::Meta(syn::Meta::Path(path)) => match path.get_ident() {
-                        Some(ident) if ident == "ignore" => {
-                            self.ignores.push(variant.ident.clone());
-                        }
-                        Some(ident) => panic!("Unknown attribute: {}", ident.to_string()),
-                        _ => {},
-                    },
-                    syn::NestedMeta::Meta(syn::Meta::NameValue(name_value)) => {
-                        match name_value.path.get_ident().map(|ident| ident.to_string()) {
-                            Some(name) if name == "group" => if let syn::Lit::Str(str) = &name_value.lit {
-                                self.record_group(str.value(), variant.ident.clone());
-                            } else {
-                                panic!("Invalid `group` value type: #[counter(group = `string type` )]")
-                            },
-                            Some(name) if name == "weight" =>  {
-                                if let syn::Lit::Int(value) = &name_value.lit {
-                                    self.record_weight(value.base10_parse().expect("`weight` value parse failed"), variant.ident.clone());
-                                } else {
-                                    panic!("Invalid `weight` value type, expected int type: #[counter(weight = `int type`)]");
+    fn parse_variant_attributes(
+        &mut self,
+        variant: &Variant,
+    ) -> Result<(), proc_macro2::TokenStream> {
+        for attr in variant.attrs.iter() {
+            match attr.parse_meta() {
+                Ok(syn::Meta::List(meta_list))
+                    if meta_list
+                        .path
+                        .get_ident()
+                        .filter(|&ident| ident == "counter")
+                        .is_some() =>
+                {
+                    for nested in meta_list.nested.iter() {
+                        match nested {
+                            syn::NestedMeta::Meta(syn::Meta::Path(path)) => {
+                                match path.get_ident() {
+                                    Some(ident) if ident == "ignore" => {
+                                        self.ignores.push(variant.ident.clone());
+                                    }
+                                    Some(ident) => {
+                                        return Err(quote_spanned! {ident.span()=>
+                                            compile_error!("Unknown attribute");
+                                        });
+                                    }
+                                    _ => {}
                                 }
                             }
-                            Some(invalid_name) => {
-                                panic!("Invalid attribute: {}", invalid_name);
+                            syn::NestedMeta::Meta(syn::Meta::NameValue(name_value)) => {
+                                let ident = name_value.path.get_ident();
+                                match ident {
+                                    Some(name) if name == "group" => {
+                                        if let syn::Lit::Str(str) = &name_value.lit {
+                                            self.record_group(str.value(), variant.ident.clone());
+                                        } else {
+                                            return Err(quote_spanned! {name.span()=>
+                                                compile_error!("Invalid `group` value type: expected string type: #[counter(group = `string type`)]");
+                                            });
+                                        }
+                                    }
+                                    Some(name) if name == "weight" => {
+                                        if let syn::Lit::Int(value) = &name_value.lit {
+                                            self.record_weight(
+                                                value
+                                                    .base10_parse()
+                                                    .expect("`weight` value parse failed"),
+                                                variant.ident.clone(),
+                                            );
+                                        } else {
+                                            return Err(quote_spanned! {name.span()=>
+                                                compile_error!("Invalid `weight` value type, expected int type: #[counter(weight = `int type`)]");
+                                            });
+                                        }
+                                    }
+                                    Some(invalid_name) => {
+                                        return Err(quote_spanned! {invalid_name.span()=>
+                                            compile_error!("Unknown attribute.");
+                                        });
+                                    }
+                                    _ => {}
+                                }
                             }
-                            _ => {},
+                            _ => {}
                         }
                     }
-                    _ => {},
-                });
+                }
+                _ => {}
             }
-            _ => {},
-        });
+        }
 
         if self.is_ignored(variant) {
-            return;
+            return Ok(());
         }
 
         if self.index_group(&variant.ident).is_none() {
             self.record_group(variant.ident.to_string(), variant.ident.clone());
         }
+
+        Ok(())
     }
 
     fn record_group(&mut self, name: String, ident: proc_macro2::Ident) {

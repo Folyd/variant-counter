@@ -33,7 +33,10 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
     let parsed = match &input.data {
         Data::Enum(data_enum) => {
-            let parsed_attr = ParsedAttr::parse(&data_enum);
+            let parsed_attr = match ParsedAttr::parse(&data_enum) {
+                Ok(parsed_attr) => parsed_attr,
+                Err(error) => return error.into(),
+            };
 
             let variant_count = data_enum.variants.len();
             let variant_len = variant_count - parsed_attr.ignores.len();
