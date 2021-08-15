@@ -13,6 +13,6 @@ fn main() {
     counter.record(&Opt::<usize>::None);
     counter.erase(&Opt::Some(1));
     counter.erase(&Opt::Some(1));
-    assert_eq!(counter.check(&Opt::Some(1)), Some(0));
+    assert_eq!(counter.check_some(), 0);
     println!("{:?}", counter.to_map());
 }

@@ -9,7 +9,6 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 use crate::attrs::ParsedAttr;
 
 mod attrs;
-mod check;
 mod erase;
 mod record;
 
@@ -19,6 +18,7 @@ struct ParsedEnum {
     // The number of variants excluding ignored in the enum type.
     variant_len: usize,
     match_arm_quotes: Vec<proc_macro2::TokenStream>,
+    check_quotes: Vec<proc_macro2::TokenStream>,
     weight_match_arm_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
     group_map_quotes: Vec<proc_macro2::TokenStream>,
@@ -40,6 +40,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
             let variant_count = data_enum.variants.len();
             let variant_len = variant_count - parsed_attr.ignores.len();
+            let mut check_quotes = Vec::with_capacity(variant_len);
             let mut weight_match_arm_quotes = Vec::with_capacity(variant_len);
             let mut match_arm_quotes = Vec::with_capacity(variant_len);
             let mut map_quotes = Vec::with_capacity(variant_len);
@@ -59,6 +60,15 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     let variant_name = &variant.ident;
                     let index = variant_index_map[variant_name];
                     let display_variant_name = variant_name.to_string();
+
+                    let check_fn_name =
+                        format_ident!("check_{}", display_variant_name.to_lowercase());
+                    check_quotes.push(quote! {
+                        #[inline]
+                        #vis const fn #check_fn_name(&self) -> usize {
+                            self.container[#index]
+                        }
+                    });
                     map_quotes.push(quote! {
                         map.insert(#display_variant_name, self.container[#index]);
                     });
@@ -114,6 +124,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 variant_count,
                 variant_len,
                 match_arm_quotes,
+                check_quotes,
                 weight_match_arm_quotes,
                 map_quotes,
                 group_map_quotes: parsed_attr
@@ -142,7 +153,10 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let group_map_quotes = parsed.group_map_quotes;
     let counter_struct = format_ident!("{}Counter", name);
 
-    let check_fn = check::generate_check_fn(&input, match_arm_quotes);
+    #[cfg(feature = "check")]
+    let check_fns = parsed.check_quotes;
+    #[cfg(not(feature = "check"))]
+    let check_fns = quote! {};
 
     let record_fn = if parsed.weight_match_arm_quotes.is_empty() {
         record::generate_record_fn(&input, match_arm_quotes)
@@ -178,7 +192,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
             #erase_fn
 
-            #check_fn
+            #(#check_fns)*
 
             #vis fn discard#ty_generics(&mut self, target: &#name#ty_generics) {
                 let index = match target {

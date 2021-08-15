@@ -32,10 +32,9 @@ fn main() {
     counter.record(&Level::Error(1));
     counter.record(&Level::Fatal("fatal error"));
 
-    assert_eq!(counter.check(&Level::Error(1)), Some(10));
+    assert_eq!(counter.check_error(), 10);
     counter.discard(&Level::Error(1));
 
-    assert_eq!(counter.check(&Level::Trace), None);
     println!("{:?}", &counter.to_map());
     counter.reset();
     println!("{:?}", &counter.to_group_map());

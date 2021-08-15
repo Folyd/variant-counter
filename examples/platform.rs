@@ -26,7 +26,7 @@ fn main() {
     counter.record(&Platform::Windows);
     counter.record(&Platform::IOS);
     counter.record(&Platform::Others);
-    assert_eq!(counter.check(&Platform::Android), Some(2));
+    assert_eq!(counter.check_android(), 2);
     println!("{:?}", counter.to_map());
     println!("{:?}", counter.to_group_map());
 }
