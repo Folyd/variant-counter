@@ -17,7 +17,9 @@ struct ParsedEnum {
     // The number of variants excluding ignored in the enum type.
     variant_len: usize,
     match_arm_quotes: Vec<proc_macro2::TokenStream>,
+    #[cfg(feature = "check")]
     check_quotes: Vec<proc_macro2::TokenStream>,
+    #[cfg(feature = "erase")]
     erase_quotes: Vec<proc_macro2::TokenStream>,
     weight_match_arm_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
@@ -135,7 +137,9 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 variant_count,
                 variant_len,
                 match_arm_quotes,
+                #[cfg(feature = "check")]
                 check_quotes,
+                #[cfg(feature = "erase")]
                 erase_quotes,
                 weight_match_arm_quotes,
                 map_quotes,
@@ -168,7 +172,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     #[cfg(feature = "check")]
     let check_fns = parsed.check_quotes;
     #[cfg(not(feature = "check"))]
-    let check_fns = quote! {};
+    let check_fns = vec![quote! {}];
 
     let record_fn = if parsed.weight_match_arm_quotes.is_empty() {
         record::generate_record_fn(&input, match_arm_quotes)
@@ -179,7 +183,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     #[cfg(feature = "check")]
     let erase_fns = parsed.erase_quotes;
     #[cfg(not(feature = "check"))]
-    let erase_fns = quote! {};
+    let erase_fns = vec![quote! {}];
 
     let expanded = quote! {
         impl #impl_generics #name #ty_generics #where_clause {
