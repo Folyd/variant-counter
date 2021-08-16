@@ -168,6 +168,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let map_quotes = parsed.map_quotes;
     let group_map_quotes = parsed.group_map_quotes;
     let counter_struct = format_ident!("{}Counter", name);
+    let stats_struct = format_ident!("{}Stats", name);
 
     #[cfg(feature = "check")]
     let check_fns = parsed.check_quotes;
@@ -193,7 +194,15 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             }
         }
 
-        #[derive(Debug)]
+        impl #impl_generics variant_counter::VariantCount for #name #ty_generics #where_clause {
+            type Target = #counter_struct;
+
+            fn counter() -> Self::Target {
+                #counter_struct::new()
+            }
+        }
+
+        #[derive(Debug, Clone, Copy)]
         #[must_use]
         #vis struct #counter_struct {
             container: [usize; #variant_len],
@@ -236,13 +245,29 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 #(#group_map_quotes)*
                 map
             }
+
+            #vis fn stats(&self) -> #stats_struct {
+                #stats_struct::new(*self)
+            }
         }
 
-        impl #impl_generics variant_counter::VariantCount for #name #ty_generics #where_clause {
-            type Target = #counter_struct;
+        #vis struct #stats_struct {
+            counter: #counter_struct,
+        }
 
-            fn counter() -> Self::Target {
-                #counter_struct::new()
+        impl #stats_struct {
+            #vis fn new(counter: #counter_struct) -> #stats_struct {
+                #stats_struct { counter }
+            }
+
+            #[inline]
+            #vis fn sum(&self) -> usize {
+                self.counter.container.iter().sum()
+            }
+
+            #[inline]
+            #vis fn avg(&self) -> usize {
+                self.sum() / #variant_len
             }
         }
     };
