@@ -140,10 +140,6 @@ impl ParsedAttr {
         self.ignores.contains(&variant.ident)
     }
 
-    pub(crate) fn has_weight(&self) -> bool {
-        !self.weight.is_empty()
-    }
-
     fn validate_legality(&self) {
         let conflict_names: Vec<_> = self
             .ignores

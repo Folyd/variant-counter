@@ -14,7 +14,7 @@ enum Platform {
     Linux,
     #[counter(group = "desktop")]
     MacOS,
-    #[counter(group = "desktop")]
+    #[counter(group = "desktop", weight = 3)]
     ChromeOS,
     Others,
 }

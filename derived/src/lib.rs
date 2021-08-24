@@ -9,7 +9,6 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 use crate::attrs::ParsedAttr;
 
 mod attrs;
-mod record;
 
 struct ParsedEnum {
     // The number of variants in the enum type.
@@ -17,11 +16,11 @@ struct ParsedEnum {
     // The number of variants excluding ignored in the enum type.
     variant_len: usize,
     match_arm_quotes: Vec<proc_macro2::TokenStream>,
+    weights: Vec<proc_macro2::TokenStream>,
     #[cfg(feature = "check")]
     check_quotes: Vec<proc_macro2::TokenStream>,
     #[cfg(feature = "erase")]
     erase_quotes: Vec<proc_macro2::TokenStream>,
-    weight_match_arm_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
     group_map_quotes: Vec<proc_macro2::TokenStream>,
 }
@@ -42,9 +41,9 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
             let variant_count = data_enum.variants.len();
             let variant_len = variant_count - parsed_attr.ignores.len();
+            let mut weights = Vec::with_capacity(variant_len);
             let mut check_quotes = Vec::with_capacity(variant_len);
             let mut erase_quotes = Vec::with_capacity(variant_len);
-            let mut weight_match_arm_quotes = Vec::with_capacity(variant_len);
             let mut match_arm_quotes = Vec::with_capacity(variant_len);
             let mut map_quotes = Vec::with_capacity(variant_len);
             let variant_index_map = data_enum
@@ -99,6 +98,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     }
 
                     let weight = parsed_attr.weight.get(&variant_name).copied().unwrap_or(1);
+                    weights.push(parsed_attr.weight.get(&variant_name).copied().unwrap_or(1));
 
                     let erase_fn_name =
                         format_ident!("erase_{}", display_variant_name.to_lowercase());
@@ -108,40 +108,19 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                             self.container[#index] = self.container[#index].saturating_sub(#weight);
                         }
                     });
-
-                    if parsed_attr.has_weight() {
-                        match &variant.fields {
-                            Fields::Named(_) => {
-                                weight_match_arm_quotes.push(quote! {
-                                    #name::#variant_name{ .. } => Some((#index, #weight))
-                                });
-                            }
-                            Fields::Unnamed(f) => {
-                                if f.unnamed.is_empty() {
-                                    weight_match_arm_quotes.push(quote! {
-                                        #name::#variant_name() => Some((#index, #weight))
-                                    });
-                                } else {
-                                    weight_match_arm_quotes.push(quote! {
-                                        #name::#variant_name(..) => Some((#index, #weight))
-                                    });
-                                }
-                            }
-                            Fields::Unit => weight_match_arm_quotes.push(quote! {
-                                #name::#variant_name =>  Some((#index, #weight))
-                            }),
-                        }
-                    }
                 });
             ParsedEnum {
                 variant_count,
                 variant_len,
+                weights: weights
+                    .into_iter()
+                    .map(|weight| quote! { #weight })
+                    .collect(),
                 match_arm_quotes,
                 #[cfg(feature = "check")]
                 check_quotes,
                 #[cfg(feature = "erase")]
                 erase_quotes,
-                weight_match_arm_quotes,
                 map_quotes,
                 group_map_quotes: parsed_attr
                     .groups
@@ -175,16 +154,12 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     #[cfg(not(feature = "check"))]
     let check_fns = vec![quote! {}];
 
-    let record_fn = if parsed.weight_match_arm_quotes.is_empty() {
-        record::generate_record_fn(&input, match_arm_quotes)
-    } else {
-        record::generate_weight_record_fn(&input, &parsed.weight_match_arm_quotes)
-    };
-
     #[cfg(feature = "check")]
     let erase_fns = parsed.erase_quotes;
     #[cfg(not(feature = "check"))]
     let erase_fns = vec![quote! {}];
+
+    let weights = parsed.weights;
 
     let expanded = quote! {
         impl #impl_generics #name #ty_generics #where_clause {
@@ -206,14 +181,27 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         #[must_use]
         #vis struct #counter_struct {
             container: [usize; #variant_len],
+            weights: [usize; #variant_len],
         }
 
         impl #counter_struct {
             #vis const fn new() -> #counter_struct {
-                #counter_struct { container: [0; #variant_len]  }
+                #counter_struct {
+                    container: [0; #variant_len],
+                    weights: [#(#weights,)*],
+                }
             }
 
-            #record_fn
+            #vis fn record#ty_generics(&mut self, target: &#name#ty_generics) {
+                let pair = match target {
+                    #(#match_arm_quotes,)*
+                    _ => None,
+                };
+
+                if let Some(index) = pair {
+                    self.container[index] = self.container[index].saturating_add(self.weights[index]);
+                }
+            }
 
             #(#erase_fns)*
 
