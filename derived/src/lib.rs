@@ -68,11 +68,11 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     check_quotes.push(quote! {
                         #[inline]
                         #vis const fn #check_fn_name(&self) -> usize {
-                            self.container[#index]
+                            self.frequency[#index] * self.weight[#index]
                         }
                     });
                     map_quotes.push(quote! {
-                        map.insert(#display_variant_name, self.container[#index]);
+                        map.insert(#display_variant_name, self.frequency[#index] * self.weight[#index]);
                     });
 
                     match &variant.fields {
@@ -97,7 +97,6 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                         }),
                     }
 
-                    let weight = parsed_attr.weight.get(&variant_name).copied().unwrap_or(1);
                     weights.push(parsed_attr.weight.get(&variant_name).copied().unwrap_or(1));
 
                     let erase_fn_name =
@@ -105,7 +104,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     erase_quotes.push(quote! {
                         #[inline]
                         #vis fn #erase_fn_name(&mut self) {
-                            self.container[#index] = self.container[#index].saturating_sub(#weight);
+                            self.frequency[#index] = self.frequency[#index].saturating_sub(1);
                         }
                     });
                 });
@@ -129,7 +128,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                         let variant_quotes = idents
                             .iter()
                             .filter_map(|ident| variant_index_map.get(ident))
-                            .map(|index| quote! { self.container[#index] })
+                            .map(|index| quote! { self.frequency[#index] * self.weight[#index] })
                             .collect::<Vec<proc_macro2::TokenStream>>();
                         quote! {
                             map.insert(#group_name, #(#variant_quotes)+*);
@@ -180,15 +179,15 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         #[derive(Debug, Clone, Copy)]
         #[must_use]
         #vis struct #counter_struct {
-            container: [usize; #variant_len],
-            weights: [usize; #variant_len],
+            frequency: [usize; #variant_len],
+            weight: [usize; #variant_len],
         }
 
         impl #counter_struct {
             #vis const fn new() -> #counter_struct {
                 #counter_struct {
-                    container: [0; #variant_len],
-                    weights: [#(#weights,)*],
+                    frequency: [0; #variant_len],
+                    weight: [#(#weights,)*],
                 }
             }
 
@@ -199,7 +198,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 };
 
                 if let Some(index) = pair {
-                    self.container[index] = self.container[index].saturating_add(self.weights[index]);
+                    self.frequency[index] = self.frequency[index].saturating_add(1);
                 }
             }
 
@@ -214,12 +213,12 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 };
 
                 if let Some(index) = index {
-                    self.container[index] = 0;
+                    self.frequency[index] = 0;
                 }
             }
 
             #vis fn reset#ty_generics(&mut self) {
-                self.container = [0; #variant_len];
+                self.frequency = [0; #variant_len];
             }
 
             #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
@@ -250,7 +249,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
             #[inline]
             #vis fn sum(&self) -> usize {
-                self.counter.container.iter().sum()
+                self.counter.frequency.iter().sum()
             }
 
             #[inline]
