@@ -146,7 +146,6 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let map_quotes = parsed.map_quotes;
     let group_map_quotes = parsed.group_map_quotes;
     let counter_struct = format_ident!("{}Counter", name);
-    let stats_struct = format_ident!("{}Stats", name);
 
     #[cfg(feature = "check")]
     let check_fns = parsed.check_quotes;
@@ -233,23 +232,9 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 map
             }
 
-            #vis fn stats(&self) -> #stats_struct {
-                #stats_struct::new(*self)
-            }
-        }
-
-        #vis struct #stats_struct {
-            counter: #counter_struct,
-        }
-
-        impl #stats_struct {
-            #vis fn new(counter: #counter_struct) -> #stats_struct {
-                #stats_struct { counter }
-            }
-
             #[inline]
             #vis fn sum(&self) -> usize {
-                self.counter.frequency.iter().sum()
+                self.frequency.iter().sum()
             }
 
             #[inline]
