@@ -11,8 +11,10 @@ license = "MIT"
 proc-macro = true
 
 [features]
+full = ["check", "erase", "stats"]
 check = []
 erase = []
+stats = []
 
 [dependencies]
 quote = "1.0"

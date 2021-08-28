@@ -14,12 +14,12 @@ members = ["derived"]
 [features]
 check = ["variant_counter_derived/check"]
 erase = ["variant_counter_derived/erase"]
+stats = ["variant_counter_derived/stats"]
 
 [dependencies]
 variant_counter_derived = { path = "./derived", version = "0.3" }
 
 [dev-dependencies]
 variant_counter_derived = { path = "./derived", version = "0.3", features = [
-    "check",
-    "erase",
+    "full",
 ] }

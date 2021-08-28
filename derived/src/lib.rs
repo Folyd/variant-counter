@@ -157,6 +157,27 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     #[cfg(not(feature = "check"))]
     let erase_fns = vec![quote! {}];
 
+    #[cfg(feature = "stats")]
+    let stats_fns = quote! {
+        #[inline]
+        #vis fn avg(&self) -> f64 {
+            self.sum() as f64 / #variant_len as f64
+        }
+
+        #[inline]
+        #vis fn variance(&self) -> f64 {
+            let avg = self.avg();
+            self.frequency.iter().map(|freq| (*freq as f64 - avg).powi(2)).sum::<f64>() / #variant_len as f64
+        }
+
+        #[inline]
+        #vis fn sd(&self) -> f64 {
+            self.variance().sqrt()
+        }
+    };
+    #[cfg(not(feature = "stats"))]
+    let stats_fns = quote! {};
+
     let weights = parsed.weights;
 
     let expanded = quote! {
@@ -237,10 +258,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 self.frequency.iter().sum()
             }
 
-            #[inline]
-            #vis fn avg(&self) -> usize {
-                self.sum() / #variant_len
-            }
+            #stats_fns
         }
     };
 
