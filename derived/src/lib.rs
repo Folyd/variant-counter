@@ -79,14 +79,14 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                         #[cfg(feature = "check")]
                         #[inline]
                         #vis const fn #check_fn_name(&self) -> usize {
-                            self.0.frequency[#index] * self.0.weight[#index]
+                            self.frequency[#index] * self.weight[#index]
                         }
                     });
                     map_quotes.push(quote! {
                         map.insert(#display_variant_name, self.frequency[#index]);
                     });
                     weighted_map_quotes.push(quote! {
-                        map.insert(#display_variant_name, self.0.frequency[#index] * self.0.weight[#index]);
+                        map.insert(#display_variant_name, self.frequency[#index] * self.weight[#index]);
                     });
 
                     match &variant.fields {
@@ -157,9 +157,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                         let variant_quotes = idents
                             .iter()
                             .filter_map(|ident| variant_index_map.get(ident))
-                            .map(
-                                |index| quote! { self.0.frequency[#index] * self.0.weight[#index] },
-                            )
+                            .map(|index| quote! { self.frequency[#index] * self.weight[#index] })
                             .collect::<Vec<proc_macro2::TokenStream>>();
                         quote! {
                             map.insert(#group_name, #(#variant_quotes)+*);
@@ -189,12 +187,28 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
     let weighted_struct = format_ident!("{}Weighted", name);
     let weight_quotes = quote! {
-        #vis struct #weighted_struct<'a>(&'a #counter_struct);
+        impl #counter_struct {
+            #vis fn weighted(&self) -> #weighted_struct {
+                #weighted_struct::new(&self.frequency)
+            }
+        }
+
+        #vis struct #weighted_struct<'a> {
+            frequency: &'a [usize],
+            weight: [usize; #variant_len],
+        }
 
         impl<'a> #weighted_struct<'a> {
+            #vis fn new(frequency: &'a [usize]) -> #weighted_struct {
+                #weighted_struct {
+                    frequency,
+                    weight: [#(#weights,)*],
+                }
+            }
+
             #[inline]
             #vis fn total_weight(&self) -> usize {
-                self.0.weight.iter().sum()
+                self.weight.iter().sum()
             }
 
             #(#weight_check_fns)*
@@ -213,9 +227,9 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
 
             #[inline]
             #vis fn sum(&self) -> usize {
-                self.0.frequency
+                self.frequency
                     .iter()
-                    .zip(self.0.weight)
+                    .zip(self.weight)
                     .map(|(freq, w)| freq * w)
                     .sum()
             }
@@ -230,9 +244,9 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             #[inline]
             #vis fn variance(&self) -> f64 {
                 let avg = self.avg();
-                self.0.frequency
+                self.frequency
                     .iter()
-                    .zip(self.0.weight)
+                    .zip(self.weight)
                     .map(|(freq, w)| ((freq * w) as f64 - avg).powi(2))
                     .sum::<f64>() / self.total_weight() as f64
             }
@@ -265,14 +279,12 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         #[must_use]
         #vis struct #counter_struct {
             frequency: [usize; #variant_len],
-            weight: [usize; #variant_len],
         }
 
         impl #counter_struct {
             #vis const fn new() -> #counter_struct {
                 #counter_struct {
                     frequency: [0; #variant_len],
-                    weight: [#(#weights,)*],
                 }
             }
 
@@ -339,15 +351,11 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     .sum::<f64>()
                     / #variant_len as f64
             }
-            
+
             #[cfg(feature = "stats")]
             #[inline]
             #vis fn sd(&self) -> f64 {
                 self.variance().sqrt()
-            }
-
-            #vis fn weighted(&self) -> #weighted_struct {
-                #weighted_struct(self)
             }
         }
 
