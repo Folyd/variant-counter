@@ -19,10 +19,14 @@ struct ParsedEnum {
     weights: Vec<proc_macro2::TokenStream>,
     #[cfg(feature = "check")]
     check_quotes: Vec<proc_macro2::TokenStream>,
+    #[cfg(feature = "check")]
+    weighted_check_quotes: Vec<proc_macro2::TokenStream>,
     #[cfg(feature = "erase")]
     erase_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
     group_map_quotes: Vec<proc_macro2::TokenStream>,
+    weighted_map_quotes: Vec<proc_macro2::TokenStream>,
+    weighted_group_map_quotes: Vec<proc_macro2::TokenStream>,
 }
 
 #[proc_macro_derive(VariantCount, attributes(counter))]
@@ -43,9 +47,11 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             let variant_len = variant_count - parsed_attr.ignores.len();
             let mut weights = Vec::with_capacity(variant_len);
             let mut check_quotes = Vec::with_capacity(variant_len);
+            let mut weighted_check_quotes = Vec::with_capacity(variant_len);
             let mut erase_quotes = Vec::with_capacity(variant_len);
             let mut match_arm_quotes = Vec::with_capacity(variant_len);
             let mut map_quotes = Vec::with_capacity(variant_len);
+            let mut weighted_map_quotes = Vec::with_capacity(variant_len);
             let variant_index_map = data_enum
                 .variants
                 .iter()
@@ -68,11 +74,20 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     check_quotes.push(quote! {
                         #[inline]
                         #vis const fn #check_fn_name(&self) -> usize {
-                            self.frequency[#index] * self.weight[#index]
+                            self.frequency[#index]
+                        }
+                    });
+                    weighted_check_quotes.push(quote! {
+                        #[inline]
+                        #vis const fn #check_fn_name(&self) -> usize {
+                            self.0.frequency[#index] * self.0.weight[#index]
                         }
                     });
                     map_quotes.push(quote! {
-                        map.insert(#display_variant_name, self.frequency[#index] * self.weight[#index]);
+                        map.insert(#display_variant_name, self.frequency[#index]);
+                    });
+                    weighted_map_quotes.push(quote! {
+                        map.insert(#display_variant_name, self.0.frequency[#index] * self.0.weight[#index]);
                     });
 
                     match &variant.fields {
@@ -118,6 +133,8 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 match_arm_quotes,
                 #[cfg(feature = "check")]
                 check_quotes,
+                #[cfg(feature = "check")]
+                weighted_check_quotes,
                 #[cfg(feature = "erase")]
                 erase_quotes,
                 map_quotes,
@@ -128,7 +145,24 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                         let variant_quotes = idents
                             .iter()
                             .filter_map(|ident| variant_index_map.get(ident))
-                            .map(|index| quote! { self.frequency[#index] * self.weight[#index] })
+                            .map(|index| quote! { self.frequency[#index] })
+                            .collect::<Vec<proc_macro2::TokenStream>>();
+                        quote! {
+                            map.insert(#group_name, #(#variant_quotes)+*);
+                        }
+                    })
+                    .collect(),
+                weighted_map_quotes,
+                weighted_group_map_quotes: parsed_attr
+                    .groups
+                    .iter()
+                    .map(|(group_name, idents)| {
+                        let variant_quotes = idents
+                            .iter()
+                            .filter_map(|ident| variant_index_map.get(ident))
+                            .map(
+                                |index| quote! { self.0.frequency[#index] * self.0.weight[#index] },
+                            )
                             .collect::<Vec<proc_macro2::TokenStream>>();
                         quote! {
                             map.insert(#group_name, #(#variant_quotes)+*);
@@ -144,13 +178,19 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let variant_len = parsed.variant_len;
     let match_arm_quotes = &parsed.match_arm_quotes;
     let map_quotes = parsed.map_quotes;
+    let weighted_map_quotes = parsed.weighted_map_quotes;
     let group_map_quotes = parsed.group_map_quotes;
+    let weighted_group_map_quotes = parsed.weighted_group_map_quotes;
     let counter_struct = format_ident!("{}Counter", name);
 
     #[cfg(feature = "check")]
     let check_fns = parsed.check_quotes;
     #[cfg(not(feature = "check"))]
     let check_fns = vec![quote! {}];
+    #[cfg(feature = "check")]
+    let weight_check_fns = parsed.weighted_check_quotes;
+    #[cfg(not(feature = "check"))]
+    let weight_check_fns = vec![quote! {}];
 
     #[cfg(feature = "check")]
     let erase_fns = parsed.erase_quotes;
@@ -192,6 +232,20 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             #[inline]
             #vis fn total_weight(&self) -> usize {
                 self.0.weight.iter().sum()
+            }
+
+            #(#weight_check_fns)*
+
+            #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
+                let mut map = std::collections::HashMap::with_capacity(#variant_len);
+                #(#weighted_map_quotes)*
+                map
+            }
+
+            #vis fn to_group_map(&self) -> std::collections::HashMap<&'static str, usize> {
+                let mut map = std::collections::HashMap::with_capacity(#variant_len);
+                #(#weighted_group_map_quotes)*
+                map
             }
 
             #[inline]

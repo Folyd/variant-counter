@@ -28,12 +28,16 @@ fn test_weight() {
     assert_eq!(counter.check_debug(), 1);
 
     counter.record(&Level::Info);
-    assert_eq!(counter.check_info(), 2);
+    assert_eq!(counter.check_info(), 1);
     counter.erase_info();
     assert_eq!(counter.check_info(), 0);
 
     counter.record(&Level::Warn);
     counter.record(&Level::Error);
-    assert_eq!(counter.check_warn(), 5);
-    assert_eq!(counter.check_error(), 10);
+    assert_eq!(counter.check_warn(), 1);
+    assert_eq!(counter.check_error(), 1);
+
+    let weighted = counter.weighted();
+    assert_eq!(weighted.check_warn(), 5);
+    assert_eq!(weighted.check_error(), 10);
 }
