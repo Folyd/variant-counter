@@ -17,11 +17,8 @@ struct ParsedEnum {
     variant_len: usize,
     match_arm_quotes: Vec<proc_macro2::TokenStream>,
     weights: Vec<proc_macro2::TokenStream>,
-    #[cfg(feature = "check")]
     check_quotes: Vec<proc_macro2::TokenStream>,
-    #[cfg(feature = "check")]
     weighted_check_quotes: Vec<proc_macro2::TokenStream>,
-    #[cfg(feature = "erase")]
     erase_quotes: Vec<proc_macro2::TokenStream>,
     map_quotes: Vec<proc_macro2::TokenStream>,
     group_map_quotes: Vec<proc_macro2::TokenStream>,
@@ -72,12 +69,14 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     let check_fn_name =
                         format_ident!("check_{}", display_variant_name.to_lowercase());
                     check_quotes.push(quote! {
+                        #[cfg(feature = "check")]
                         #[inline]
                         #vis const fn #check_fn_name(&self) -> usize {
                             self.frequency[#index]
                         }
                     });
                     weighted_check_quotes.push(quote! {
+                        #[cfg(feature = "check")]
                         #[inline]
                         #vis const fn #check_fn_name(&self) -> usize {
                             self.0.frequency[#index] * self.0.weight[#index]
@@ -117,6 +116,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     let erase_fn_name =
                         format_ident!("erase_{}", display_variant_name.to_lowercase());
                     erase_quotes.push(quote! {
+                        #[cfg(feature = "erase")]
                         #[inline]
                         #vis fn #erase_fn_name(&mut self) {
                             self.frequency[#index] = self.frequency[#index].saturating_sub(1);
@@ -131,11 +131,8 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     .map(|weight| quote! { #weight })
                     .collect(),
                 match_arm_quotes,
-                #[cfg(feature = "check")]
                 check_quotes,
-                #[cfg(feature = "check")]
                 weighted_check_quotes,
-                #[cfg(feature = "erase")]
                 erase_quotes,
                 map_quotes,
                 group_map_quotes: parsed_attr
@@ -183,44 +180,10 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let weighted_group_map_quotes = parsed.weighted_group_map_quotes;
     let counter_struct = format_ident!("{}Counter", name);
 
-    #[cfg(feature = "check")]
     let check_fns = parsed.check_quotes;
-    #[cfg(not(feature = "check"))]
-    let check_fns = vec![quote! {}];
-    #[cfg(feature = "check")]
     let weight_check_fns = parsed.weighted_check_quotes;
-    #[cfg(not(feature = "check"))]
-    let weight_check_fns = vec![quote! {}];
 
-    #[cfg(feature = "check")]
     let erase_fns = parsed.erase_quotes;
-    #[cfg(not(feature = "check"))]
-    let erase_fns = vec![quote! {}];
-
-    #[cfg(feature = "stats")]
-    let stats_fns = quote! {
-        #[inline]
-        #vis fn avg(&self) -> f64 {
-            self.sum() as f64 / #variant_len as f64
-        }
-
-        #[inline]
-        #vis fn variance(&self) -> f64 {
-            let avg = self.avg();
-            self.frequency
-                .iter()
-                .map(|freq| (*freq as f64 - avg).powi(2))
-                .sum::<f64>()
-                / #variant_len as f64
-        }
-
-        #[inline]
-        #vis fn sd(&self) -> f64 {
-            self.variance().sqrt()
-        }
-    };
-    #[cfg(not(feature = "stats"))]
-    let stats_fns = quote! {};
 
     let weights = parsed.weights;
 
@@ -257,11 +220,13 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     .sum()
             }
 
+            #[cfg(feature = "stats")]
             #[inline]
             #vis fn avg(&self) -> f64 {
                 self.sum() as f64 / self.total_weight() as f64
             }
 
+            #[cfg(feature = "stats")]
             #[inline]
             #vis fn variance(&self) -> f64 {
                 let avg = self.avg();
@@ -272,6 +237,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                     .sum::<f64>() / self.total_weight() as f64
             }
 
+            #[cfg(feature = "stats")]
             #[inline]
             #vis fn sd(&self) -> f64 {
                 self.variance().sqrt()
@@ -357,7 +323,28 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
                 self.frequency.iter().sum()
             }
 
-            #stats_fns
+            #[cfg(feature = "stats")]
+            #[inline]
+            #vis fn avg(&self) -> f64 {
+                self.sum() as f64 / #variant_len as f64
+            }
+
+            #[cfg(feature = "stats")]
+            #[inline]
+            #vis fn variance(&self) -> f64 {
+                let avg = self.avg();
+                self.frequency
+                    .iter()
+                    .map(|freq| (*freq as f64 - avg).powi(2))
+                    .sum::<f64>()
+                    / #variant_len as f64
+            }
+            
+            #[cfg(feature = "stats")]
+            #[inline]
+            #vis fn sd(&self) -> f64 {
+                self.variance().sqrt()
+            }
 
             #vis fn weighted(&self) -> #weighted_struct {
                 #weighted_struct(self)

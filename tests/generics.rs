@@ -1,3 +1,4 @@
+#![cfg(feature = "full")]
 use variant_counter::*;
 
 #[derive(VariantCount)]

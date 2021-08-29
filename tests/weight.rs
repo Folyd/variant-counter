@@ -1,3 +1,4 @@
+#![cfg(feature = "full")]
 #![allow(unused)]
 use variant_counter::*;
 
