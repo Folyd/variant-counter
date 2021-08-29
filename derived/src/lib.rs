@@ -167,7 +167,11 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
         #[inline]
         #vis fn variance(&self) -> f64 {
             let avg = self.avg();
-            self.frequency.iter().map(|freq| (*freq as f64 - avg).powi(2)).sum::<f64>() / #variant_len as f64
+            self.frequency
+                .iter()
+                .map(|freq| (*freq as f64 - avg).powi(2))
+                .sum::<f64>()
+                / #variant_len as f64
         }
 
         #[inline]
@@ -179,6 +183,47 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let stats_fns = quote! {};
 
     let weights = parsed.weights;
+
+    let weighted_struct = format_ident!("{}Weighted", name);
+    let weight_quotes = quote! {
+        #vis struct #weighted_struct<'a>(&'a #counter_struct);
+
+        impl<'a> #weighted_struct<'a> {
+            #[inline]
+            #vis fn total_weight(&self) -> usize {
+                self.0.weight.iter().sum()
+            }
+
+            #[inline]
+            #vis fn sum(&self) -> usize {
+                self.0.frequency
+                    .iter()
+                    .zip(self.0.weight)
+                    .map(|(freq, w)| freq * w)
+                    .sum()
+            }
+
+            #[inline]
+            #vis fn avg(&self) -> f64 {
+                self.sum() as f64 / self.total_weight() as f64
+            }
+
+            #[inline]
+            #vis fn variance(&self) -> f64 {
+                let avg = self.avg();
+                self.0.frequency
+                    .iter()
+                    .zip(self.0.weight)
+                    .map(|(freq, w)| ((freq * w) as f64 - avg).powi(2))
+                    .sum::<f64>() / self.total_weight() as f64
+            }
+
+            #[inline]
+            #vis fn sd(&self) -> f64 {
+                self.variance().sqrt()
+            }
+        }
+    };
 
     let expanded = quote! {
         impl #impl_generics #name #ty_generics #where_clause {
@@ -259,7 +304,13 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
             }
 
             #stats_fns
+
+            #vis fn weighted(&self) -> #weighted_struct {
+                #weighted_struct(self)
+            }
         }
+
+        #weight_quotes
     };
 
     TokenStream::from(expanded)
