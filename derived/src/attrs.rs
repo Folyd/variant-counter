@@ -34,6 +34,10 @@ impl ParsedAttr {
         Ok(parsed)
     }
 
+    pub fn has_customized_weight(&self) -> bool {
+        self.weight.values().any(|w| *w > 1)
+    }
+
     fn parse_variant_attributes(
         &mut self,
         variant: &Variant,
