@@ -132,7 +132,7 @@ impl ParsedAttr {
             .iter()
             .enumerate()
             .find_map(|(index, (name, ident))| {
-                if ident.contains(&variant) {
+                if ident.contains(variant) {
                     Some((index, name))
                 } else {
                     None

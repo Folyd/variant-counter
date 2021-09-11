@@ -41,7 +41,7 @@ impl ParsedEnum {
         let variant_index_map = data_enum
             .variants
             .iter()
-            .filter(|variant| !parsed_attr.is_ignored(&variant))
+            .filter(|variant| !parsed_attr.is_ignored(variant))
             .enumerate()
             .map(|(index, variant)| (&variant.ident, index))
             .collect::<HashMap<&proc_macro2::Ident, usize>>();
@@ -49,7 +49,7 @@ impl ParsedEnum {
         data_enum
             .variants
             .iter()
-            .filter(|variant| !parsed_attr.is_ignored(&variant))
+            .filter(|variant| !parsed_attr.is_ignored(variant))
             .for_each(|variant| {
                 let variant_name = &variant.ident;
                 let index = variant_index_map[variant_name];
@@ -99,7 +99,7 @@ impl ParsedEnum {
                     }),
                 }
 
-                weights.push(parsed_attr.weight.get(&variant_name).copied().unwrap_or(1));
+                weights.push(parsed_attr.weight.get(variant_name).copied().unwrap_or(1));
 
                 let erase_fn_name = format_ident!("erase_{}", display_variant_name.to_lowercase());
                 erase_quotes.push(quote! {

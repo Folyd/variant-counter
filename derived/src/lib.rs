@@ -14,7 +14,7 @@ pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     if let Data::Enum(data_enum) = &input.data {
-        let parsed_attr = match ParsedAttr::parse(&data_enum) {
+        let parsed_attr = match ParsedAttr::parse(data_enum) {
             Ok(parsed_attr) => parsed_attr,
             Err(error) => return error.into(),
         };
