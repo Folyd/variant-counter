@@ -11,7 +11,9 @@ license = "MIT"
 proc-macro = true
 
 [features]
-full = ["check", "erase", "stats"]
+default = ["std"]
+full = ["std", "check", "erase", "stats"]
+std = []
 check = []
 erase = []
 stats = []

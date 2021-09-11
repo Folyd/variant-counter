@@ -41,7 +41,7 @@ fn test_group() {
     counter.record(&Platform::Others);
     assert_eq!(counter.check_android(), 2);
 
-    let mut map = counter.to_map();
+    let mut map = counter.aggregate();
     assert_eq!(map.len(), 7);
     assert_eq!(
         (
@@ -64,7 +64,7 @@ fn test_group() {
         )
     );
 
-    let mut group_map = counter.to_group_map();
+    let mut group_map = counter.group_aggregate();
     assert_eq!(group_map.len(), 3);
     assert_eq!(
         (
@@ -89,7 +89,7 @@ fn test_group_alias() {
     assert_eq!(counter.check_football(), 1);
     assert_eq!(counter.check_soccer(), 1);
 
-    let mut group_map = counter.to_group_map();
+    let mut group_map = counter.group_aggregate();
     assert_eq!(group_map.len(), 3);
     assert_eq!(
         (

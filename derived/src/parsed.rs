@@ -15,10 +15,10 @@ pub(crate) struct ParsedEnum {
     pub(crate) check_quotes: Vec<proc_macro2::TokenStream>,
     pub(crate) weighted_check_quotes: Vec<proc_macro2::TokenStream>,
     pub(crate) erase_quotes: Vec<proc_macro2::TokenStream>,
-    pub(crate) map_quotes: Vec<proc_macro2::TokenStream>,
-    pub(crate) group_map_quotes: Vec<proc_macro2::TokenStream>,
-    pub(crate) weighted_map_quotes: Vec<proc_macro2::TokenStream>,
-    pub(crate) weighted_group_map_quotes: Vec<proc_macro2::TokenStream>,
+    pub(crate) aggregate_quotes: Vec<proc_macro2::TokenStream>,
+    pub(crate) group_aggregate_quotes: Vec<proc_macro2::TokenStream>,
+    pub(crate) weighted_aggregate_quotes: Vec<proc_macro2::TokenStream>,
+    pub(crate) weighted_group_aggregate_quotes: Vec<proc_macro2::TokenStream>,
 }
 
 impl ParsedEnum {
@@ -36,8 +36,8 @@ impl ParsedEnum {
         let mut weighted_check_quotes = Vec::with_capacity(variant_len);
         let mut erase_quotes = Vec::with_capacity(variant_len);
         let mut match_arm_quotes = Vec::with_capacity(variant_len);
-        let mut map_quotes = Vec::with_capacity(variant_len);
-        let mut weighted_map_quotes = Vec::with_capacity(variant_len);
+        let mut aggregate_quotes = Vec::with_capacity(variant_len);
+        let mut weighted_aggregate_quotes = Vec::with_capacity(variant_len);
         let variant_index_map = data_enum
             .variants
             .iter()
@@ -70,11 +70,11 @@ impl ParsedEnum {
                         self.frequency[#index] * self.weight[#index]
                     }
                 });
-                map_quotes.push(quote! {
-                    map.insert(#display_variant_name, self.frequency[#index]);
+                aggregate_quotes.push(quote! {
+                    (#display_variant_name, self.frequency[#index])
                 });
-                weighted_map_quotes.push(quote! {
-                    map.insert(#display_variant_name, self.frequency[#index] * self.weight[#index]);
+                weighted_aggregate_quotes.push(quote! {
+                    (#display_variant_name, self.frequency[#index] * self.weight[#index])
                 });
 
                 match &variant.fields {
@@ -121,8 +121,8 @@ impl ParsedEnum {
             check_quotes,
             weighted_check_quotes,
             erase_quotes,
-            map_quotes,
-            group_map_quotes: parsed_attr
+            aggregate_quotes,
+            group_aggregate_quotes: parsed_attr
                 .groups
                 .iter()
                 .map(|(group_name, idents)| {
@@ -132,12 +132,12 @@ impl ParsedEnum {
                         .map(|index| quote! { self.frequency[#index] })
                         .collect::<Vec<proc_macro2::TokenStream>>();
                     quote! {
-                        map.insert(#group_name, #(#variant_quotes)+*);
+                        (#group_name, #(#variant_quotes)+*)
                     }
                 })
                 .collect(),
-            weighted_map_quotes,
-            weighted_group_map_quotes: parsed_attr
+            weighted_aggregate_quotes,
+            weighted_group_aggregate_quotes: parsed_attr
                 .groups
                 .iter()
                 .map(|(group_name, idents)| {
@@ -147,7 +147,7 @@ impl ParsedEnum {
                         .map(|index| quote! { self.frequency[#index] * self.weight[#index] })
                         .collect::<Vec<proc_macro2::TokenStream>>();
                     quote! {
-                        map.insert(#group_name, #(#variant_quotes)+*);
+                        (#group_name, #(#variant_quotes)+*)
                     }
                 })
                 .collect(),

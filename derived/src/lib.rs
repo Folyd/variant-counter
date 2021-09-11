@@ -42,9 +42,10 @@ fn derive_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2::TokenSt
 
     let variant_count = parsed.variant_count;
     let variant_len = parsed.variant_len;
+    let group_variant_len = parsed.group_aggregate_quotes.len();
     let match_arm_quotes = &parsed.match_arm_quotes;
-    let map_quotes = &parsed.map_quotes;
-    let group_map_quotes = &parsed.group_map_quotes;
+    let aggregate_quotes = &parsed.aggregate_quotes;
+    let group_aggregate_quotes = &parsed.group_aggregate_quotes;
     let counter_struct = format_ident!("{}Counter", name);
 
     let check_fns = &parsed.check_quotes;
@@ -109,16 +110,24 @@ fn derive_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2::TokenSt
                 self.frequency = [0; #variant_len];
             }
 
-            #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
-                let mut map = std::collections::HashMap::with_capacity(#variant_len);
-                #(#map_quotes)*
-                map
+            #[cfg(feature = "std")]
+            #vis fn aggregate(&self) -> std::collections::HashMap<&'static str, usize> {
+                IntoIterator::into_iter([#(#aggregate_quotes),*]).collect()
             }
 
-            #vis fn to_group_map(&self) -> std::collections::HashMap<&'static str, usize> {
-                let mut map = std::collections::HashMap::with_capacity(#variant_len);
-                #(#group_map_quotes)*
-                map
+            #[cfg(not(feature = "std"))]
+            #vis fn aggregate(&self) -> [(&'static str, usize); #variant_len] {
+                [#(#aggregate_quotes),*]
+            }
+
+            #[cfg(feature = "std")]
+            #vis fn group_aggregate(&self) -> std::collections::HashMap<&'static str, usize> {
+                IntoIterator::into_iter([#(#group_aggregate_quotes),*]).collect()
+            }
+
+            #[cfg(not(feature = "std"))]
+            #vis fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
+                [#(#group_aggregate_quotes),*]
             }
 
             #[inline]
@@ -157,8 +166,9 @@ fn derive_weighted_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2
     let vis = &input.vis;
 
     let variant_len = parsed.variant_len;
-    let weighted_map_quotes = &parsed.weighted_map_quotes;
-    let weighted_group_map_quotes = &parsed.weighted_group_map_quotes;
+    let group_variant_len = parsed.group_aggregate_quotes.len();
+    let weighted_aggregate_quotes = &parsed.weighted_aggregate_quotes;
+    let weighted_group_aggregate_quotes = &parsed.weighted_group_aggregate_quotes;
     let counter_struct = format_ident!("{}Counter", name);
 
     let weight_check_fns = &parsed.weighted_check_quotes;
@@ -192,16 +202,24 @@ fn derive_weighted_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2
 
             #(#weight_check_fns)*
 
-            #vis fn to_map(&self) -> std::collections::HashMap<&'static str, usize> {
-                let mut map = std::collections::HashMap::with_capacity(#variant_len);
-                #(#weighted_map_quotes)*
-                map
+            #[cfg(feature = "std")]
+            #vis fn aggregate(&self) -> std::collections::HashMap<&'static str, usize> {
+                IntoIterator::into_iter([#(#weighted_aggregate_quotes),*]).collect()
             }
 
-            #vis fn to_group_map(&self) -> std::collections::HashMap<&'static str, usize> {
-                let mut map = std::collections::HashMap::with_capacity(#variant_len);
-                #(#weighted_group_map_quotes)*
-                map
+            #[cfg(not(feature = "std"))]
+            #vis fn aggregate(&self) -> [(&'static str, usize); #variant_len] {
+                [#(#weighted_aggregate_quotes),*]
+            }
+
+            #[cfg(feature = "std")]
+            #vis fn group_aggregate(&self) -> std::collections::HashMap<&'static str, usize> {
+                IntoIterator::into_iter([#(#weighted_group_aggregate_quotes),*]).collect()
+            }
+
+            #[cfg(not(feature = "std"))]
+            #vis fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
+                [#(#weighted_group_aggregate_quotes),*]
             }
 
             #[inline]

@@ -12,7 +12,9 @@ license = "MIT"
 members = ["derived"]
 
 [features]
+default = ["std"]
 full = ["variant_counter_derived/full"]
+std = ["variant_counter_derived/std"]
 check = ["variant_counter_derived/check"]
 erase = ["variant_counter_derived/erase"]
 stats = ["variant_counter_derived/stats"]
