@@ -60,9 +60,9 @@ fn derive_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2::TokenSt
         }
 
         impl #impl_generics variant_counter::VariantCount for #name #ty_generics #where_clause {
-            type Target = #counter_struct;
+            type Counter = #counter_struct;
 
-            fn counter() -> Self::Target {
+            fn counter() -> Self::Counter {
                 #counter_struct::new()
             }
         }

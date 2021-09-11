@@ -3,18 +3,18 @@ use variant_counter::VariantCount;
 
 #[derive(VariantCount)]
 enum Platform {
-    #[counter(group = "mobile")]
+    #[counter(group = "Mobile")]
     Android,
-    #[counter(group = "mobile")]
+    #[counter(group = "Mobile")]
     #[allow(clippy::upper_case_acronyms)]
     IOS,
-    #[counter(group = "desktop")]
+    #[counter(group = "Desktop")]
     Windows,
-    #[counter(group = "desktop")]
+    #[counter(group = "Desktop")]
     Linux,
-    #[counter(group = "desktop")]
+    #[counter(group = "Desktop")]
     MacOS,
-    #[counter(group = "desktop", weight = 3)]
+    #[counter(group = "Desktop", weight = 3)]
     ChromeOS,
     Others,
 }

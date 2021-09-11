@@ -3,7 +3,7 @@
 use variant_counter::*;
 
 #[derive(VariantCount)]
-enum Rate {
+enum Rating {
     #[counter(weight = 1)]
     Hated,
     #[counter(weight = 2)]
@@ -18,21 +18,21 @@ enum Rate {
 
 #[test]
 fn test_stats() {
-    let mut counter = Rate::counter();
-    counter.record(&Rate::Disliked);
-    counter.record(&Rate::Liked);
-    counter.record(&Rate::Liked);
-    counter.record(&Rate::Liked);
-    counter.record(&Rate::Liked);
-    counter.record(&Rate::Ok);
-    counter.record(&Rate::Ok);
-    counter.record(&Rate::Ok);
-    counter.record(&Rate::Ok);
-    counter.record(&Rate::Ok);
-    counter.record(&Rate::Liked);
-    counter.record(&Rate::Loved);
-    counter.record(&Rate::Hated);
-    counter.record(&Rate::Disliked);
+    let mut counter = Rating::counter();
+    counter.record(&Rating::Disliked);
+    counter.record(&Rating::Liked);
+    counter.record(&Rating::Liked);
+    counter.record(&Rating::Liked);
+    counter.record(&Rating::Liked);
+    counter.record(&Rating::Ok);
+    counter.record(&Rating::Ok);
+    counter.record(&Rating::Ok);
+    counter.record(&Rating::Ok);
+    counter.record(&Rating::Ok);
+    counter.record(&Rating::Liked);
+    counter.record(&Rating::Loved);
+    counter.record(&Rating::Hated);
+    counter.record(&Rating::Disliked);
 
     assert_eq!(14, counter.sum());
     assert_eq!(2.8f64, counter.avg());
