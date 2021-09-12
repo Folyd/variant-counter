@@ -54,7 +54,7 @@ fn derive_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2::TokenSt
     quote! {
         impl #impl_generics #name #ty_generics #where_clause {
             #[inline]
-            fn variant_count() -> usize {
+            const fn variant_count() -> usize {
                 #variant_count
             }
         }
@@ -124,7 +124,7 @@ fn derive_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2::TokenSt
 
             /// Aggregate the data to an array.
             #[cfg(not(feature = "std"))]
-            #vis fn aggregate(&self) -> [(&'static str, usize); #variant_len] {
+            #vis const fn aggregate(&self) -> [(&'static str, usize); #variant_len] {
                 [#(#aggregate_quotes),*]
             }
 
@@ -134,7 +134,7 @@ fn derive_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2::TokenSt
             }
 
             #[cfg(not(feature = "std"))]
-            #vis fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
+            #vis const fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
                 [#(#group_aggregate_quotes),*]
             }
 
@@ -190,7 +190,7 @@ fn derive_weighted_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2
     quote! {
         impl #counter_struct {
             /// Get the weighted counter struct.
-            #vis fn weighted(&self) -> #weighted_struct {
+            #vis const fn weighted(&self) -> #weighted_struct {
                 #weighted_struct::new(&self.frequency)
             }
         }
@@ -204,7 +204,7 @@ fn derive_weighted_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2
 
         impl<'a> #weighted_struct<'a> {
             /// Create a weighted counter struct
-            #vis fn new(frequency: &'a [usize]) -> #weighted_struct {
+            #vis const fn new(frequency: &'a [usize]) -> #weighted_struct {
                 #weighted_struct {
                     frequency,
                     weight: [#(#weights,)*],
@@ -227,7 +227,7 @@ fn derive_weighted_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2
 
             /// Aggreate the weighted data.
             #[cfg(not(feature = "std"))]
-            #vis fn aggregate(&self) -> [(&'static str, usize); #variant_len] {
+            #vis const fn aggregate(&self) -> [(&'static str, usize); #variant_len] {
                 [#(#weighted_aggregate_quotes),*]
             }
 
@@ -237,7 +237,7 @@ fn derive_weighted_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2
             }
 
             #[cfg(not(feature = "std"))]
-            #vis fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
+            #vis const fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
                 [#(#weighted_group_aggregate_quotes),*]
             }
 
