@@ -57,6 +57,7 @@ impl ParsedEnum {
 
                 let check_fn_name = format_ident!("check_{}", display_variant_name.to_lowercase());
                 check_quotes.push(quote! {
+                    /// Check the variant's frequency.
                     #[cfg(feature = "check")]
                     #[inline]
                     #vis const fn #check_fn_name(&self) -> usize {
@@ -64,6 +65,7 @@ impl ParsedEnum {
                     }
                 });
                 weighted_check_quotes.push(quote! {
+                    /// Check the variant's weighted frequency.
                     #[cfg(feature = "check")]
                     #[inline]
                     #vis const fn #check_fn_name(&self) -> usize {
@@ -103,6 +105,8 @@ impl ParsedEnum {
 
                 let erase_fn_name = format_ident!("erase_{}", display_variant_name.to_lowercase());
                 erase_quotes.push(quote! {
+                    /// Erase a record.
+                    /// It has no effect if you erase an ignored variant.
                     #[cfg(feature = "erase")]
                     #[inline]
                     #vis fn #erase_fn_name(&mut self) {
