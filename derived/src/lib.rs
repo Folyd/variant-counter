@@ -9,6 +9,7 @@ use crate::{attrs::ParsedAttr, parsed::ParsedEnum};
 mod attrs;
 mod parsed;
 
+/// `VariantCount` derived procedure macro.
 #[proc_macro_derive(VariantCount, attributes(counter))]
 pub fn derive_variant_count(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -163,7 +164,7 @@ fn derive_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2::TokenSt
                     / #variant_len as f64
             }
 
-            /// Get the stardard variance of frequency.
+            /// Get the stardard deviation of frequency.
             #[cfg(feature = "stats")]
             #[inline]
             #vis fn sd(&self) -> f64 {
@@ -270,7 +271,7 @@ fn derive_weighted_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2
                     .sum::<f64>() / self.total_weight() as f64
             }
 
-            /// Get the weighted frequency stardard variance.
+            /// Get the weighted frequency stardard deviation.
             #[cfg(feature = "stats")]
             #[inline]
             #vis fn sd(&self) -> f64 {

@@ -26,7 +26,7 @@
 //! counter.record(&Enum::Variant1);
 //! ```
 //!
-//! ### Erase your record with `erase_*()` methods
+//! ### Erase the record with `erase_*()` methods
 //!
 //! ```rust,ignore
 //! counter.erase_variant1();
@@ -34,7 +34,7 @@
 //!
 //! Those `erase_*()` methods are under `erase` feature flag, and disabled by default.
 //!
-//! ### Check your record with `check_*()` methods
+//! ### Check the record with `check_*()` methods
 //!
 //! ```rust,ignore
 //! assert_eq!(counter.check_variant1(), 1);
@@ -67,7 +67,7 @@
 //! }
 //! ```
 //!
-//! If a variant was ignored, it has no effect when your record that variant.
+//! If a variant was ignored, it has no effect when you record that variant.
 //!
 //! ```rust,ignore
 //! let mut counter = Level::counter();
@@ -112,13 +112,13 @@
 //! // Sum
 //! counter.sum();
 //!
-//! // Avg
+//! // Average
 //! counter.avg();
 //!
 //! // Variance
 //! counter.variance();
 //!
-//! // Standard variance
+//! // Standard deviation
 //! counter.sd();
 //! ```
 //!
@@ -148,25 +148,28 @@
 //! // Sum
 //! w.sum();
 //!
-//! // Avg
+//! // Average
 //! w.avg();
 //!
 //! // Variance
 //! w.variance();
 //!
-//! // Standard variance
+//! // Standard deviation
 //! w.sd();
 //! ```
 //!
+//! 
 //! ## Feature flags
+//! 
+//! - `full`: Enable all features.
+//! 
+//! - `check`: Generate `check` methods for variants.
+//! 
+//! - `erase`: Generate `erase` methods for variants.
 //!
-//! - `full`
-//!
-//! - `check`
-//!
-//! - `erase`
-//!
-//! - `std`
+//! - `stats`: Generate statistics methods, such as `avg()`, `variance()`, and `sd`, etc.
+//! 
+//! - `std`: Enable `std` crate supported. Enabled by default. Please disable this feature to support `no_std`.
 
 pub use variant_counter_derived::*;
 

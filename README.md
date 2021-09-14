@@ -21,7 +21,7 @@ let mut counter = Enum::counter();
 counter.record(&Enum::Variant1);
 ```
 
-### Erase your record with `erase_*()` methods
+### Erase the record with `erase_*()` methods
 
 ```rust
 counter.erase_variant1();
@@ -29,7 +29,7 @@ counter.erase_variant1();
 
 Those `erase_*()` methods are under `erase` feature flag, and disabled by default.
 
-### Check your record with `check_*()` methods
+### Check the record with `check_*()` methods
 
 ```rust
 assert_eq!(counter.check_variant1(), 1);
@@ -61,7 +61,7 @@ pub enum Level {
 }
 ```
 
-If a variant was ignored, it has no effect when your record that variant.
+If a variant was ignored, it has no effect when you record that variant.
 
 ```rust
 let mut counter = Level::counter();
@@ -105,13 +105,13 @@ let group_data = counter.group_aggregate();
 // Sum
 counter.sum();
 
-// Avg
+// Average
 counter.avg();
 
 // Variance
 counter.variance();
 
-// Standard variance
+// Standard deviation
 counter.sd();
 ```
 
@@ -140,22 +140,30 @@ let w = counter.weighted();
 // Sum
 w.sum();
 
-// Avg
+// Average
 w.avg();
 
 // Variance
 w.variance();
 
-// Standard variance
+// Standard deviation
 w.sd();
 ```
 
+## Macro expand
+
+You can use [carg-expand](https://crates.io/crates/cargo-expand) to expand the derived `VariantCount` macro. 
+Here is the expanded code:
+
+
 ## Feature flags
 
-- `full`
+- `full`: Enable all features.
 
-- `check`
+- `check`: Generate `check` methods for variants.
 
-- `erase`
+- `erase`: Generate `erase` methods for variants.
 
-- `std`
+- `stats`: Generate statistics methods, such as `avg()`, `variance()`, and `sd`, etc.
+
+- `std`: Enable `std` crate supported. Enabled by default. Please disable this feature to support `no_std`.
