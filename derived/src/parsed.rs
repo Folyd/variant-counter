@@ -19,6 +19,7 @@ pub(crate) struct ParsedEnum {
     pub(crate) group_aggregate_quotes: Vec<proc_macro2::TokenStream>,
     pub(crate) weighted_aggregate_quotes: Vec<proc_macro2::TokenStream>,
     pub(crate) weighted_group_aggregate_quotes: Vec<proc_macro2::TokenStream>,
+    pub(crate) has_customized_group: bool,
 }
 
 impl ParsedEnum {
@@ -155,6 +156,7 @@ impl ParsedEnum {
                     }
                 })
                 .collect(),
+            has_customized_group: parsed_attr.has_customized_group,
         }
     }
 }

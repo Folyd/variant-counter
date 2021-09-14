@@ -43,14 +43,29 @@ fn derive_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2::TokenSt
 
     let variant_count = parsed.variant_count;
     let variant_len = parsed.variant_len;
-    let group_variant_len = parsed.group_aggregate_quotes.len();
     let match_arm_quotes = &parsed.match_arm_quotes;
     let aggregate_quotes = &parsed.aggregate_quotes;
-    let group_aggregate_quotes = &parsed.group_aggregate_quotes;
     let counter_struct = format_ident!("{}Counter", name);
 
     let check_fns = &parsed.check_quotes;
     let erase_fns = &parsed.erase_quotes;
+    let group_aggregate_quotes = if parsed.has_customized_group {
+        let group_variant_len = parsed.group_aggregate_quotes.len();
+        let group_aggregate_quotes = &parsed.group_aggregate_quotes;
+        quote! {
+            #[cfg(feature = "std")]
+            #vis fn group_aggregate(&self) -> std::collections::HashMap<&'static str, usize> {
+                IntoIterator::into_iter([#(#group_aggregate_quotes),*]).collect()
+            }
+
+            #[cfg(not(feature = "std"))]
+            #vis const fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
+                [#(#group_aggregate_quotes),*]
+            }
+        }
+    } else {
+        quote! {}
+    };
 
     quote! {
         impl #impl_generics #name #ty_generics #where_clause {
@@ -129,15 +144,7 @@ fn derive_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2::TokenSt
                 [#(#aggregate_quotes),*]
             }
 
-            #[cfg(feature = "std")]
-            #vis fn group_aggregate(&self) -> std::collections::HashMap<&'static str, usize> {
-                IntoIterator::into_iter([#(#group_aggregate_quotes),*]).collect()
-            }
-
-            #[cfg(not(feature = "std"))]
-            #vis const fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
-                [#(#group_aggregate_quotes),*]
-            }
+            #group_aggregate_quotes
 
             /// Get the sum of frequency.
             #[inline]
@@ -179,14 +186,29 @@ fn derive_weighted_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2
     let vis = &input.vis;
 
     let variant_len = parsed.variant_len;
-    let group_variant_len = parsed.group_aggregate_quotes.len();
     let weighted_aggregate_quotes = &parsed.weighted_aggregate_quotes;
-    let weighted_group_aggregate_quotes = &parsed.weighted_group_aggregate_quotes;
     let counter_struct = format_ident!("{}Counter", name);
 
     let weight_check_fns = &parsed.weighted_check_quotes;
     let weights = &parsed.weights;
     let weighted_struct = format_ident!("{}Weighted", name);
+    let weighted_group_aggregate_quotes = if parsed.has_customized_group {
+        let group_variant_len = parsed.group_aggregate_quotes.len();
+        let weighted_group_aggregate_quotes = &parsed.weighted_group_aggregate_quotes;
+        quote! {
+            #[cfg(feature = "std")]
+            #vis fn group_aggregate(&self) -> std::collections::HashMap<&'static str, usize> {
+                IntoIterator::into_iter([#(#weighted_group_aggregate_quotes),*]).collect()
+            }
+
+            #[cfg(not(feature = "std"))]
+            #vis const fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
+                [#(#weighted_group_aggregate_quotes),*]
+            }
+        }
+    } else {
+        quote! {}
+    };
 
     quote! {
         impl #counter_struct {
@@ -232,15 +254,7 @@ fn derive_weighted_impl(input: &DeriveInput, parsed: &ParsedEnum) -> proc_macro2
                 [#(#weighted_aggregate_quotes),*]
             }
 
-            #[cfg(feature = "std")]
-            #vis fn group_aggregate(&self) -> std::collections::HashMap<&'static str, usize> {
-                IntoIterator::into_iter([#(#weighted_group_aggregate_quotes),*]).collect()
-            }
-
-            #[cfg(not(feature = "std"))]
-            #vis const fn group_aggregate(&self) -> [(&'static str, usize); #group_variant_len] {
-                [#(#weighted_group_aggregate_quotes),*]
-            }
+            #weighted_group_aggregate_quotes
 
             /// Get the weighted frequency sum.
             #[inline]

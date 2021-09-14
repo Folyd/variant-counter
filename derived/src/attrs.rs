@@ -8,6 +8,8 @@ pub(crate) struct ParsedAttr {
     pub(crate) ignores: Vec<proc_macro2::Ident>,
     pub(crate) groups: BTreeMap<String, Vec<proc_macro2::Ident>>,
     pub(crate) weight: HashMap<proc_macro2::Ident, usize>,
+    // Whether the user has declared a customize group.
+    pub(crate) has_customized_group: bool,
 }
 
 impl ParsedAttr {
@@ -16,6 +18,7 @@ impl ParsedAttr {
             ignores: vec![],
             groups: BTreeMap::default(),
             weight: HashMap::default(),
+            has_customized_group: false,
         };
 
         if data_enum.variants.is_empty() {
@@ -71,6 +74,9 @@ impl ParsedAttr {
                                 match ident {
                                     Some(name) if name == "group" => {
                                         if let syn::Lit::Str(str) = &name_value.lit {
+                                            if str.value() != variant.ident.to_string() {
+                                                self.has_customized_group = true;
+                                            }
                                             self.record_group(str.value(), variant.ident.clone());
                                         } else {
                                             return Err(quote_spanned! {name.span()=>
