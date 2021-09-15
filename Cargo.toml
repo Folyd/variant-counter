@@ -1,6 +1,6 @@
 [package]
 name = "variant_counter"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2018"
 description = "Rust's Enum variant counter"
 repository = "https://github.com/Folyd/variant-counter"
@@ -20,9 +20,9 @@ erase = ["variant_counter_derived/erase"]
 stats = ["variant_counter_derived/stats"]
 
 [dependencies]
-variant_counter_derived = { path = "./derived", version = "0.3" }
+variant_counter_derived = { path = "./derived", version = "0.4" }
 
 [dev-dependencies]
-variant_counter_derived = { path = "./derived", version = "0.3", features = [
+variant_counter_derived = { path = "./derived", version = "0.4", features = [
     "full",
 ] }

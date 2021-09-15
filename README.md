@@ -1,5 +1,8 @@
 # variant-counter
 
+[![Crates.io](https://img.shields.io/crates/v/variant-counter)](https://crates.io/crates/variant_counter)
+[![docs.rs](https://img.shields.io/docsrs/variant_counter)](https://docs.rs/variant_counter)
+
 The efficient and elegant crate to count variants of Rust's Enum.
 
 ## Get started
