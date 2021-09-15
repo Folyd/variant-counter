@@ -236,6 +236,6 @@ impl EnumCounter {
 
 - `erase`: Generate `erase` methods for variants.
 
-- `stats`: Generate statistics methods, such as `avg()`, `variance()`, and `sd`, etc.
+- `stats`: Generate statistics methods, such as `avg()`, `variance()`, and `sd()`, etc.
 
 - `std`: Enable `std` crate supported. Enabled by default. Please disable this feature to support `no_std`.

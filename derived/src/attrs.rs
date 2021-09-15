@@ -74,10 +74,11 @@ impl ParsedAttr {
                                 match ident {
                                     Some(name) if name == "group" => {
                                         if let syn::Lit::Str(str) = &name_value.lit {
-                                            if str.value() != variant.ident.to_string() {
+                                            let group_name = str.value();
+                                            if variant.ident != group_name {
                                                 self.has_customized_group = true;
                                             }
-                                            self.record_group(str.value(), variant.ident.clone());
+                                            self.record_group(group_name, variant.ident.clone());
                                         } else {
                                             return Err(quote_spanned! {name.span()=>
                                                 compile_error!("Invalid `group` value type: expected string type: #[counter(group = `string type`)]");
